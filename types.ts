@@ -7,6 +7,7 @@ export enum ModuleType {
 }
 
 export type AspectRatio = '1:1' | '16:9' | '9:16' | '4:3' | '3:4';
+export type Resolution = '720p' | '1080p' | '4K';
 
 export interface Project {
   id: string;
@@ -14,16 +15,20 @@ export interface Project {
   type: ModuleType;
   updatedAt: string;
   icon: string;
-  data: any; // Stores module-specific configuration
-  assets?: string[]; // Stores generated base64 strings or URLs
+  data: any; 
+  assets?: string[]; 
 }
 
-export interface DataPoint {
+export interface BlueprintNode {
   id: string;
-  label: string;
-  value: string;
+  title: string;
+  color: string;
+  x: number;
+  y: number;
+  points: string[];
 }
 
+// Added LogoStyle interface to resolve import error in MarkEngine.tsx
 export interface LogoStyle {
   id: string;
   name: string;
@@ -32,8 +37,11 @@ export interface LogoStyle {
 }
 
 export interface FlyerConfig {
-  type: string;
-  size: AspectRatio;
+  companyUrl: string;
+  topic: string;
+  platform: string;
+  resolution: Resolution;
+  aspectRatio: AspectRatio;
   headline: string;
   body: string;
   cta: string;

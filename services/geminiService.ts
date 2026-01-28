@@ -9,21 +9,16 @@ export class GeminiService {
   async generateLogo(description: string, industry: string, style: string): Promise<string | undefined> {
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      // Enhanced prompt for better "Mark Engine" results
-      const prompt = `Create a professional, high-resolution logo for a company. 
-      Business: ${description}. 
-      Industry: ${industry}. 
-      Style: ${style}. 
-      Ensure a clean, isolated subject on a solid neutral background. Modern vector aesthetic.`;
+      const prompt = `Create a professional logo for: ${description}. Industry: ${industry}. Style: ${style}. 
+      High-end vector mark, centered, clean background, minimal details, premium brand identity.`;
 
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: { parts: [{ text: prompt }] },
-        config: {
-          imageConfig: { aspectRatio: "1:1" }
-        }
+        config: { imageConfig: { aspectRatio: "1:1" } }
       });
 
+      // Iterating through parts to find the image part as per nano banana series guidelines
       if (response.candidates) {
         for (const candidate of response.candidates) {
           for (const part of candidate.content.parts) {
@@ -41,16 +36,21 @@ export class GeminiService {
   }
 
   /**
-   * Generates a structured blueprint for workflows/processes
+   * Generates a structured blueprint from provided text or context
    */
-  async generateBlueprint(topic: string) {
+  async generateBlueprintFromData(source: string, designStyle: string) {
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const prompt = `Act as a senior product architect. Analyze the following data/context: "${source}".
+      Design a comprehensive Blueprint Mind Map in the "${designStyle}" style.
+      The style is inspired by organic development workflows with curved connections.
+      Return a JSON object with:
+      nodes: array of { id, title, color (HEX), x (0-1000), y (0-1000), points (array of sub-details) }.
+      Ensure nodes are well-spaced and logically connected to a central "Core" node.`;
+
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
-        contents: `Generate a structured blueprint for "${topic}" similar to a mind map. 
-        Return a JSON object with nodes. Each node has: id, title, color (hex), x (0-1000), y (0-1000), and points (array of strings). 
-        Include a central 'Core' node at 500,500. Add 5-8 surrounding steps.`,
+        contents: prompt,
         config: {
           responseMimeType: "application/json",
           responseSchema: {
@@ -74,7 +74,10 @@ export class GeminiService {
           }
         }
       });
-      return JSON.parse(response.text);
+      
+      // Safely access .text property and parse JSON
+      const text = response.text;
+      return text ? JSON.parse(text) : null;
     } catch (error) {
       console.error("Blueprint generation failed", error);
       return null;
@@ -86,7 +89,7 @@ export class GeminiService {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
-        contents: { parts: [{ text: `High-end professional photography/graphic for marketing. Theme: ${prompt}. Cinematic lighting, premium aesthetic.` }] },
+        contents: { parts: [{ text: `Commercial marketing visual for: ${prompt}. High-quality photography, clean space for text, premium advertising lighting.` }] },
         config: { imageConfig: { aspectRatio } }
       });
 
@@ -111,8 +114,9 @@ export class GeminiService {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
-        contents: `Act as a senior copywriter. Improve this ${context} text: "${text}". Make it punchy and professional. Return ONLY the refined text.`
+        contents: `Refine this ${context} copy for maximum impact: "${text}". Keep it concise and bold.`
       });
+      // Correct property access for response.text
       return response.text?.trim() || text;
     } catch (error) {
       return text;
