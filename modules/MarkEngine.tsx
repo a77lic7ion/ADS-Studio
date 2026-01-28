@@ -1,14 +1,40 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { gemini } from '../services/geminiService';
 import { LogoStyle } from '../types';
 
-const MarkEngine: React.FC = () => {
-  const [description, setDescription] = useState('');
-  const [industry, setIndustry] = useState('');
-  const [activeStyle, setActiveStyle] = useState('minimalist');
+interface Props {
+  initialData?: any;
+  onDataChange?: (data: any) => void;
+}
+
+const MarkEngine: React.FC<Props> = ({ initialData, onDataChange }) => {
+  const [description, setDescription] = useState(initialData?.description || '');
+  const [industry, setIndustry] = useState(initialData?.industry || '');
+  const [activeStyle, setActiveStyle] = useState(initialData?.activeStyle || 'minimalist');
   const [loading, setLoading] = useState(false);
-  const [resultImage, setResultImage] = useState<string | null>(null);
+  const [resultImage, setResultImage] = useState<string | null>(initialData?.resultImage || null);
+
+  useEffect(() => {
+    if (initialData) {
+      setDescription(initialData.description || '');
+      setIndustry(initialData.industry || '');
+      setActiveStyle(initialData.activeStyle || 'minimalist');
+      setResultImage(initialData.resultImage || null);
+    }
+  }, [initialData]);
+
+  useEffect(() => {
+    onDataChange?.({ description, industry, activeStyle, resultImage });
+    // Global asset tracking
+    if (resultImage) {
+      const assets = JSON.parse(localStorage.getItem('ads_studio_assets') || '[]');
+      if (!assets.find((a: any) => a.data === resultImage)) {
+        assets.unshift({ id: Date.now(), type: 'Mark', data: resultImage, timestamp: new Date().toLocaleString() });
+        localStorage.setItem('ads_studio_assets', JSON.stringify(assets.slice(0, 20)));
+      }
+    }
+  }, [description, industry, activeStyle, resultImage]);
 
   const styles: LogoStyle[] = [
     { id: 'minimalist', name: 'Minimalist', icon: 'grid_view', description: 'Clean lines and lots of white space' },

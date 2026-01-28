@@ -18,7 +18,6 @@ export class GeminiService {
         config: { imageConfig: { aspectRatio: "1:1" } }
       });
 
-      // Iterating through parts to find the image part as per nano banana series guidelines
       if (response.candidates) {
         for (const candidate of response.candidates) {
           for (const part of candidate.content.parts) {
@@ -43,10 +42,10 @@ export class GeminiService {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const prompt = `Act as a senior product architect. Analyze the following data/context: "${source}".
       Design a comprehensive Blueprint Mind Map in the "${designStyle}" style.
-      The style is inspired by organic development workflows with curved connections.
       Return a JSON object with:
       nodes: array of { id, title, color (HEX), x (0-1000), y (0-1000), points (array of sub-details) }.
-      Ensure nodes are well-spaced and logically connected to a central "Core" node.`;
+      Ensure nodes are well-spaced and logically connected to a central "Core" node.
+      Vary the X and Y coordinates significantly between 100 and 900 to avoid overlapping.`;
 
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
@@ -75,7 +74,6 @@ export class GeminiService {
         }
       });
       
-      // Safely access .text property and parse JSON
       const text = response.text;
       return text ? JSON.parse(text) : null;
     } catch (error) {
@@ -84,12 +82,35 @@ export class GeminiService {
     }
   }
 
-  async generateVisualAsset(prompt: string, aspectRatio: AspectRatio = "16:9"): Promise<string | undefined> {
+  /**
+   * Generates a high-quality visual asset for flyers/ads
+   */
+  async generateVisualAsset(
+    prompt: string, 
+    aspectRatio: AspectRatio = "16:9", 
+    style: string = "Modern", 
+    referenceImage?: { data: string, mimeType: string }
+  ): Promise<string | undefined> {
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      
+      const parts: any[] = [
+        { text: `High-quality advertising background for: ${prompt}. Style: ${style}. Professional commercial photography, cinematic lighting, copy space included. High-end aesthetic.` }
+      ];
+
+      if (referenceImage) {
+        parts.push({
+          inlineData: {
+            data: referenceImage.data,
+            mimeType: referenceImage.mimeType
+          }
+        });
+        parts[0].text = `Create an advertising visual inspired by the style and brand elements of the attached image. Subject: ${prompt}. Aesthetic Style: ${style}. Ensure a professional commercial look suitable for ${aspectRatio} aspect ratio.`;
+      }
+
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
-        contents: { parts: [{ text: `Commercial marketing visual for: ${prompt}. High-quality photography, clean space for text, premium advertising lighting.` }] },
+        contents: { parts },
         config: { imageConfig: { aspectRatio } }
       });
 
@@ -116,7 +137,6 @@ export class GeminiService {
         model: 'gemini-3-flash-preview',
         contents: `Refine this ${context} copy for maximum impact: "${text}". Keep it concise and bold.`
       });
-      // Correct property access for response.text
       return response.text?.trim() || text;
     } catch (error) {
       return text;
