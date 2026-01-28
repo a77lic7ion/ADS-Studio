@@ -9,6 +9,8 @@ interface Props {
 }
 
 const PromoEngine: React.FC<Props> = ({ initialData, onDataChange }) => {
+  const commonCTAs = ['Explore Now', 'Shop Now', 'Learn More', 'Sign Up', 'Join Now', 'Get Started', 'Download Now', 'Book Now', 'Custom...'];
+
   const [config, setConfig] = useState({
     companyUrl: initialData?.companyUrl || '',
     topic: initialData?.topic || 'Product Launch',
@@ -47,7 +49,6 @@ const PromoEngine: React.FC<Props> = ({ initialData, onDataChange }) => {
 
   useEffect(() => {
     onDataChange?.({ ...config, bgImage, refImageBase64 });
-    // Save to global asset registry for Settings module
     if (bgImage && !bgImage.startsWith('http')) {
       const assets = JSON.parse(localStorage.getItem('ads_studio_assets') || '[]');
       if (!assets.find((a: any) => a.data === bgImage)) {
@@ -67,7 +68,7 @@ const PromoEngine: React.FC<Props> = ({ initialData, onDataChange }) => {
   const aestheticStyles = [
     'Neo-Brutalism', 'Glassmorphism', 'Minimalist Luxury', 'Retro-Future', 
     'Bauhaus Geometric', 'Y2K Glitch', 'Swiss International', 'Hyper-Realistic',
-    'Streetwear Aesthetic', 'Eco-Tech', 'Cyberpunk Noir'
+    'Streetwear Aesthetic', 'Eco-Tech', 'Cyberpunk Noir', 'Acid Graphic', 'Modernist Swiss', '90s Retrowave'
   ];
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -184,11 +185,34 @@ const PromoEngine: React.FC<Props> = ({ initialData, onDataChange }) => {
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Campaign Body</label>
               <textarea 
                 className="w-full rounded-xl bg-slate-50 dark:bg-[#1a1e35] border-slate-200 dark:border-slate-700 p-4 text-sm resize-none leading-relaxed" 
-                rows={3} 
+                rows={2} 
                 value={config.body} 
                 onChange={e => setConfig({...config, body: e.target.value})} 
                 placeholder="Core message..."
               />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Action (CTA)</label>
+              <div className="flex gap-2">
+                <select 
+                  className="w-1/2 rounded-xl h-11 bg-slate-50 dark:bg-[#1a1e35] border-slate-200 dark:border-slate-700 px-3 text-xs font-bold"
+                  onChange={(e) => {
+                    if (e.target.value !== 'Custom...') {
+                      setConfig({...config, cta: e.target.value});
+                    }
+                  }}
+                  value={commonCTAs.includes(config.cta) ? config.cta : 'Custom...'}
+                >
+                  {commonCTAs.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+                <input 
+                  className="w-1/2 rounded-xl h-11 bg-slate-50 dark:bg-[#1a1e35] border-slate-200 dark:border-slate-700 px-4 text-xs font-bold"
+                  value={config.cta}
+                  onChange={(e) => setConfig({...config, cta: e.target.value})}
+                  placeholder="Custom label..."
+                />
+              </div>
             </div>
           </div>
 
@@ -211,10 +235,10 @@ const PromoEngine: React.FC<Props> = ({ initialData, onDataChange }) => {
             <button 
               onClick={handleGenerate} 
               disabled={loading}
-              className="flex-1 py-5 bg-primary text-white font-black uppercase tracking-tighter text-lg rounded-2xl shadow-2xl shadow-primary/30 hover:shadow-primary/40 hover:-translate-y-1 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+              className="flex-1 h-14 bg-primary text-white font-black uppercase tracking-tighter text-lg rounded-2xl shadow-2xl shadow-primary/30 hover:shadow-primary/40 hover:-translate-y-1 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
             >
               <span className="material-symbols-outlined text-2xl">{loading ? 'sync' : 'draw'}</span>
-              {loading ? 'Generating...' : 'Synthesize Ad'}
+              {loading ? 'Synthesizing...' : 'Generate Flyer'}
             </button>
             <button 
               onClick={handleDownload}
@@ -241,18 +265,10 @@ const PromoEngine: React.FC<Props> = ({ initialData, onDataChange }) => {
           </div>
           
           <div className="relative h-full flex flex-col justify-end p-8 lg:p-14 text-white">
-            <div className="mb-6 flex items-center gap-4">
-              <div className="px-4 py-1.5 bg-primary text-[9px] font-black uppercase tracking-[0.3em] rounded-full border border-white/20 backdrop-blur-sm">ADS STUDIO PREVIEW</div>
-              <div className="text-[9px] font-black uppercase tracking-widest text-white/50">{config.style} • {config.resolution}</div>
-            </div>
             <h4 className="text-5xl lg:text-7xl font-black leading-[0.9] mb-8 uppercase tracking-tighter italic drop-shadow-[0_10px_10px_rgba(0,0,0,0.5)]">{config.headline}</h4>
             <p className="text-sm lg:text-xl text-white/90 mb-12 max-w-xl font-bold leading-relaxed drop-shadow-md">{config.body}</p>
             <div className="flex items-center gap-8">
               <button className="px-12 py-5 bg-white text-black font-black text-sm uppercase rounded-2xl shadow-2xl hover:bg-primary hover:text-white transition-all transform active:scale-95">{config.cta}</button>
-              <div className="flex flex-col">
-                <span className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em]">Platform Specific</span>
-                <span className="text-xs font-black uppercase italic tracking-tighter">{config.platform}</span>
-              </div>
             </div>
           </div>
         </div>

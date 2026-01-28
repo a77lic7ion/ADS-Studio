@@ -27,11 +27,6 @@ const DataEngine: React.FC<Props> = ({ initialData, onDataChange }) => {
 
   useEffect(() => {
     onDataChange?.({ sourceType, inputValue, designStyle, blueprint });
-    // Asset tracking
-    if (blueprint) {
-      // For saving, we'll store the SVG string or a snapshot
-      // but for "recent assets" in Settings, let's keep it simple
-    }
   }, [sourceType, inputValue, designStyle, blueprint]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -45,15 +40,22 @@ const DataEngine: React.FC<Props> = ({ initialData, onDataChange }) => {
     }
   };
 
-  const generateBlueprint = async () => {
-    if (!inputValue) return;
+  const generateBlueprint = async (customValue?: string) => {
+    const val = customValue || inputValue;
+    if (!val) return;
     setLoading(true);
     try {
-      const data = await gemini.generateBlueprintFromData(inputValue, designStyle);
+      const data = await gemini.generateBlueprintFromData(val, designStyle);
       if (data) setBlueprint(data);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleTrySample = () => {
+    const sample = "Global Logistics Supply Chain Optimization: 1. Core Hub manages inventory. 2. Suppliers send raw materials. 3. Manufacturing assembles components. 4. Warehouse handles distribution. 5. Logistics routes to Retail. 6. Customer receives product.";
+    setInputValue(sample);
+    generateBlueprint(sample);
   };
 
   const renderConnections = () => {
@@ -139,7 +141,7 @@ const DataEngine: React.FC<Props> = ({ initialData, onDataChange }) => {
     }
 
     if (designStyle === 'Bauhaus Geometric') {
-      const shapeType = node.id.charCodeAt(0) % 3; // 0: Circle, 1: Square, 2: Triangle
+      const shapeType = node.id.charCodeAt(0) % 3;
       return (
         <g key={node.id} transform={`translate(${node.x}, ${node.y})`}>
           {shapeType === 0 && <circle r="60" fill={node.color} />}
@@ -219,7 +221,6 @@ const DataEngine: React.FC<Props> = ({ initialData, onDataChange }) => {
       link.download = `blueprint-${designStyle.toLowerCase().replace(' ', '-')}.png`;
       link.click();
 
-      // Track in assets
       const assets = JSON.parse(localStorage.getItem('ads_studio_assets') || '[]');
       assets.unshift({ id: Date.now(), type: 'Infographic', data: pngData, timestamp: new Date().toLocaleString() });
       localStorage.setItem('ads_studio_assets', JSON.stringify(assets.slice(0, 20)));
@@ -254,7 +255,7 @@ const DataEngine: React.FC<Props> = ({ initialData, onDataChange }) => {
               <textarea
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
-                placeholder="Describe your process, architecture, or workflow..."
+                placeholder="Paste business logic or project steps here..."
                 className="w-full rounded-xl p-4 bg-slate-50 dark:bg-[#1a1e35] border-slate-200 dark:border-slate-700 min-h-[140px] text-sm focus:ring-2 focus:ring-primary/20"
               />
             )}
@@ -264,7 +265,7 @@ const DataEngine: React.FC<Props> = ({ initialData, onDataChange }) => {
                 type="text"
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
-                placeholder="Reference URL..."
+                placeholder="https://your-docs.com"
                 className="w-full rounded-xl h-12 px-4 bg-slate-50 dark:bg-[#1a1e35] border-slate-200 dark:border-slate-700 text-sm"
               />
             )}
@@ -275,8 +276,8 @@ const DataEngine: React.FC<Props> = ({ initialData, onDataChange }) => {
                 className="w-full rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700 p-8 flex flex-col items-center gap-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all text-center"
               >
                 <span className="material-symbols-outlined text-slate-400">upload_file</span>
-                <span className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Upload Docs</span>
-                <input ref={fileInputRef} type="file" className="hidden" accept=".txt,.md,.doc,.pdf" onChange={handleFileUpload} />
+                <span className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Upload TXT/MD</span>
+                <input ref={fileInputRef} type="file" className="hidden" accept=".txt,.md" onChange={handleFileUpload} />
               </div>
             )}
           </div>
@@ -298,7 +299,7 @@ const DataEngine: React.FC<Props> = ({ initialData, onDataChange }) => {
 
           <div className="flex gap-3 pt-2">
             <button
-              onClick={generateBlueprint}
+              onClick={() => generateBlueprint()}
               disabled={loading || !inputValue}
               className="flex-1 h-14 rounded-2xl bg-primary text-white font-black shadow-xl shadow-primary/30 hover:shadow-primary/40 hover:-translate-y-1 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
             >
@@ -318,14 +319,19 @@ const DataEngine: React.FC<Props> = ({ initialData, onDataChange }) => {
         </div>
       </div>
 
-      <div className="flex-1 relative overflow-auto bg-white dark:bg-[#060810] flex items-center justify-center p-8">
+      <div className="flex-1 relative overflow-auto bg-white dark:bg-[#060810] flex flex-col items-center justify-center p-8">
         <div className={`absolute inset-0 opacity-[0.05]`} style={{ 
           backgroundImage: designStyle === 'Hand-Drawn Schematic' ? 'url("https://www.transparenttextures.com/patterns/paper.png")' : 'radial-gradient(#0d33f2 1px, transparent 0)', 
           backgroundSize: '40px 40px',
           backgroundColor: designStyle === 'Cyber Workflow' ? '#000' : 'transparent'
         }}></div>
         
-        {blueprint ? (
+        {loading ? (
+          <div className="flex flex-col items-center justify-center text-primary animate-pulse z-20">
+            <span className="material-symbols-outlined text-[100px] animate-spin mb-4">refresh</span>
+            <p className="text-xl font-black uppercase italic tracking-tighter">Calculating Logic...</p>
+          </div>
+        ) : blueprint ? (
           <div className="relative w-full max-w-[1000px] aspect-[1.4/1] animate-in fade-in zoom-in duration-1000 transform-gpu">
             <svg viewBox="0 0 1000 700" className="blueprint-canvas w-full h-full drop-shadow-2xl">
               {renderConnections()}
@@ -341,10 +347,25 @@ const DataEngine: React.FC<Props> = ({ initialData, onDataChange }) => {
             </div>
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center text-slate-300 dark:text-slate-700 animate-pulse">
-            <span className="material-symbols-outlined text-[140px] mb-6">dynamic_feed</span>
-            <p className="text-3xl font-black uppercase tracking-tighter italic">Engine Idle</p>
-            <p className="text-sm font-medium opacity-60 uppercase tracking-widest">Input requirements to map logic</p>
+          <div className="flex flex-col items-center justify-center text-center max-w-md">
+            <div className="text-slate-300 dark:text-slate-700 mb-8">
+              <span className="material-symbols-outlined text-[140px] mb-2">dynamic_feed</span>
+              <p className="text-3xl font-black uppercase tracking-tighter italic">Engine Idle</p>
+              <p className="text-sm font-medium opacity-60 uppercase tracking-widest mt-2">The architecture engine is ready.</p>
+              <p className="text-xs font-medium opacity-40 mt-1 italic">Please enter your process requirements in the sidebar to map the visual logic.</p>
+            </div>
+            
+            <div className="p-8 bg-slate-50 dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-800 flex flex-col gap-4">
+              <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Quick Start</h4>
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">New to ADS Studio? Click below to instantly generate a professional supply-chain visualization sample.</p>
+              <button 
+                onClick={handleTrySample}
+                className="w-full py-4 bg-primary text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all transform active:scale-95 shadow-xl shadow-primary/20 flex items-center justify-center gap-2"
+              >
+                <span className="material-symbols-outlined text-sm">rocket_launch</span>
+                Load Sample Architecture
+              </button>
+            </div>
           </div>
         )}
       </div>

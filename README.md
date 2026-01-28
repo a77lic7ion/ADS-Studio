@@ -49,4 +49,4 @@ The "Save" function captures the entire state of your active workspace:
 3. Access the **Settings** module to manage LLM endpoints and creativity parameters.
 
 ---
-*Created by Afflicted.ai @2026*.
+*Created by World-Class Frontend Engineering*
