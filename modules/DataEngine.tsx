@@ -43,7 +43,7 @@ const DataEngine: React.FC<Props> = ({ brandIdentity, initialData, onDataChange 
   };
 
   const handleTrySample = () => {
-    const sample = `${brandIdentity?.name || 'ResumeBoost'} AI: 1. Input: PDF/DOCX or Images. 2. Processing: Gemini 2.5 Flash and ATS Checkpoints. 3. Output: Modern and Minimal templates. 4. Download optimized PDF.`;
+    const sample = `${brandIdentity?.name || 'ResumeBoost'} AI Workflow: 1. Input: PDF/DOCX or Images. 2. Processing: Gemini 2.5 Flash and ATS Checkpoints. 3. Output: Modern and Minimal templates. 4. Download optimized PDF.`;
     setInputValue(sample);
     generateBlueprint(sample);
   };
@@ -52,7 +52,6 @@ const DataEngine: React.FC<Props> = ({ brandIdentity, initialData, onDataChange 
     if (!blueprint) return null;
     const nodes = blueprint.nodes;
     
-    // For Process Flow, connect sequentially based on Y position clusters
     if (designStyle === 'Process Flow') {
       const inputs = nodes.filter(n => n.y < 300);
       const engines = nodes.filter(n => n.y >= 300 && n.y < 600);
@@ -63,7 +62,15 @@ const DataEngine: React.FC<Props> = ({ brandIdentity, initialData, onDataChange 
       inputs.forEach(input => {
         engines.forEach(eng => {
            paths.push(
-             <path key={`${input.id}-${eng.id}`} d={`M ${input.x} ${input.y + 40} L ${eng.x} ${eng.y - 60}`} stroke="#CBD5E1" strokeWidth="2" strokeDasharray="5,5" fill="none" />
+             <path 
+                key={`${input.id}-${eng.id}`} 
+                d={`M ${input.x} ${input.y + 50} L ${eng.x} ${eng.y - 70}`} 
+                stroke="#E2E8F0" 
+                strokeWidth="2" 
+                strokeDasharray="8,4" 
+                fill="none" 
+                className="animate-pulse"
+             />
            );
         });
       });
@@ -71,7 +78,15 @@ const DataEngine: React.FC<Props> = ({ brandIdentity, initialData, onDataChange 
       engines.forEach(eng => {
         outputs.forEach(out => {
           paths.push(
-            <path key={`${eng.id}-${out.id}`} d={`M ${eng.x} ${eng.y + 60} L ${out.x} ${out.y - 80}`} stroke="#CBD5E1" strokeWidth="2" strokeDasharray="5,5" fill="none" />
+            <path 
+                key={`${eng.id}-${out.id}`} 
+                d={`M ${eng.x} ${eng.y + 70} L ${out.x} ${out.y - 80}`} 
+                stroke="#E2E8F0" 
+                strokeWidth="2" 
+                strokeDasharray="8,4" 
+                fill="none" 
+                className="animate-pulse"
+            />
           );
         });
       });
@@ -79,7 +94,6 @@ const DataEngine: React.FC<Props> = ({ brandIdentity, initialData, onDataChange 
       return paths;
     }
 
-    // Default connection logic for other styles
     const core = nodes.find(n => n.id.includes('core')) || nodes[0];
     return nodes.filter(n => n.id !== core.id).map((node, i) => (
       <path key={i} d={`M ${core.x} ${core.y} Q ${(core.x+node.x)/2} ${core.y} ${node.x} ${node.y}`} stroke={node.color} strokeWidth="2" fill="none" opacity="0.3" />
@@ -89,20 +103,30 @@ const DataEngine: React.FC<Props> = ({ brandIdentity, initialData, onDataChange 
   const renderNode = (node: any) => {
     if (designStyle === 'Process Flow') {
       const isEngine = node.y >= 300 && node.y < 600;
+      const isOutput = node.y >= 600;
       return (
         <g key={node.id} transform={`translate(${node.x}, ${node.y})`}>
           {isEngine ? (
             <g>
-              <circle r="60" fill="white" stroke="#E2E8F0" strokeWidth="2" />
-              <circle r="50" fill={node.color} opacity="0.1" />
-              <text textAnchor="middle" y="0" className="material-symbols-outlined text-3xl" fill={node.color}>hub</text>
-              <text textAnchor="middle" y="85" fill="#1E293B" className="text-[12px] font-black uppercase tracking-widest">{node.title}</text>
+              <defs>
+                <radialGradient id="engineGrad" cx="50%" cy="50%" r="50%">
+                   <stop offset="0%" stopColor={node.color} stopOpacity="0.2" />
+                   <stop offset="100%" stopColor={node.color} stopOpacity="0.0" />
+                </radialGradient>
+              </defs>
+              <circle r="85" fill="url(#engineGrad)" className="animate-pulse" />
+              <circle r="60" fill="white" stroke={node.color} strokeWidth="3" shadow-xl="true" />
+              <text textAnchor="middle" y="5" className="material-symbols-outlined text-4xl" fill={node.color}>settings_input_component</text>
+              <text textAnchor="middle" y="90" fill="#1E293B" className="text-[14px] font-black uppercase tracking-widest">{node.title}</text>
             </g>
           ) : (
             <g>
-              <rect x="-40" y="-40" width="80" height="80" rx="12" fill="white" stroke="#E2E8F0" strokeWidth="1" />
-              <text textAnchor="middle" y="5" className="material-symbols-outlined text-2xl" fill="#475569">{node.icon || 'description'}</text>
-              <text textAnchor="middle" y="60" fill="#64748B" className="text-[9px] font-black uppercase tracking-widest">{node.title}</text>
+              <rect x="-55" y="-55" width="110" height="110" rx="20" fill="white" stroke="#E2E8F0" strokeWidth="2" className="shadow-lg" />
+              <text textAnchor="middle" y="5" className="material-symbols-outlined text-3xl" fill={isOutput ? '#10B981' : '#3B82F6'}>{node.icon || 'description'}</text>
+              <text textAnchor="middle" y="75" fill="#475569" className="text-[10px] font-black uppercase tracking-widest">{node.title}</text>
+              {node.points && node.points.length > 0 && (
+                <text textAnchor="middle" y="90" fill="#94A3B8" className="text-[8px] font-medium">{node.points[0]}</text>
+              )}
             </g>
           )}
         </g>
@@ -138,9 +162,14 @@ const DataEngine: React.FC<Props> = ({ brandIdentity, initialData, onDataChange 
           Infographic Engine
         </h2>
 
+        <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10">
+          <h4 className="text-[10px] font-black uppercase text-primary mb-1">Brand Mapping</h4>
+          <p className="text-xs font-bold truncate">{brandIdentity?.name || 'Generic Session'}</p>
+        </div>
+
         <div className="space-y-4">
           <div className="flex flex-col gap-3">
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Process Data</label>
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Process Flow Description</label>
             <textarea
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
@@ -156,7 +185,7 @@ const DataEngine: React.FC<Props> = ({ brandIdentity, initialData, onDataChange 
                 <button
                   key={style}
                   onClick={() => setDesignStyle(style)}
-                  className={`py-2 px-2 text-[9px] font-black uppercase border-2 rounded-xl transition-all ${designStyle === style ? 'border-primary bg-primary/5 text-primary shadow-lg shadow-primary/10' : 'border-slate-100 dark:border-slate-800 text-slate-400'}`}
+                  className={`py-2 px-2 text-[9px] font-black uppercase border-2 rounded-xl transition-all ${designStyle === style ? 'border-primary bg-primary/5 text-primary shadow-lg shadow-primary/10' : 'border-slate-100 dark:border-slate-800 text-slate-400 hover:border-slate-300'}`}
                 >
                   {style}
                 </button>
@@ -164,37 +193,47 @@ const DataEngine: React.FC<Props> = ({ brandIdentity, initialData, onDataChange 
             </div>
           </div>
 
-          <button onClick={() => generateBlueprint()} disabled={loading || !inputValue} className="w-full h-14 rounded-2xl bg-primary text-white font-black shadow-xl shadow-primary/30 disabled:opacity-50">
+          <button onClick={() => generateBlueprint()} disabled={loading || !inputValue} className="w-full h-14 rounded-2xl bg-primary text-white font-black shadow-xl shadow-primary/30 disabled:opacity-50 transition-all hover:-translate-y-1 active:scale-[0.98]">
             {loading ? 'Synthesizing Infographic...' : 'Generate Blueprint'}
           </button>
         </div>
       </div>
 
-      <div className="flex-1 relative overflow-auto bg-white dark:bg-[#060810] flex flex-col items-center justify-center p-8">
+      <div className="flex-1 relative overflow-auto bg-slate-100 dark:bg-[#060810] flex flex-col items-center justify-center p-8">
         <div className="absolute inset-0 opacity-[0.05] bg-[radial-gradient(#0d33f2_1px,transparent_0)] [background-size:40px_40px]"></div>
         
         {blueprint ? (
-          <div className="relative w-full max-w-[1000px] aspect-[1/1.2] bg-white rounded-[3rem] shadow-2xl overflow-hidden p-12 border border-slate-100">
+          <div className="relative w-full max-w-[900px] aspect-[1/1.3] bg-white rounded-[3.5rem] shadow-[0_50px_100px_rgba(0,0,0,0.15)] overflow-hidden p-16 border border-white">
              <div className="text-center mb-16">
-                <h1 className="text-3xl font-black uppercase tracking-tighter italic text-slate-900">{brandIdentity?.name || 'PROCESS ANALYSIS'}</h1>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.3em] mt-2">Engine Architecture & Data Flow</p>
+                <div className="flex items-center justify-center gap-3 mb-2">
+                  <div className="h-1 w-12 bg-primary/20 rounded-full"></div>
+                  <h1 className="text-4xl font-black uppercase tracking-tighter italic text-slate-900">{brandIdentity?.name || 'PROCESS ANALYSIS'}</h1>
+                  <div className="h-1 w-12 bg-primary/20 rounded-full"></div>
+                </div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mt-2">Architecture Schema & Data Orchestration</p>
              </div>
             
-            <svg viewBox="0 0 1000 1000" className="blueprint-canvas w-full h-full">
+            <svg viewBox="0 0 1000 1000" className="blueprint-canvas w-full h-[70%]">
               {renderConnections()}
               {blueprint.nodes.map(node => renderNode(node))}
             </svg>
 
-            <div className="absolute bottom-10 left-1/2 -translate-x-1/2">
-                <button className="px-12 py-4 bg-primary text-white font-black text-xs uppercase rounded-xl shadow-2xl shadow-primary/30">DOWNLOAD ASSET</button>
+            <div className="absolute bottom-16 left-0 right-0 px-16">
+              <div className="flex items-center justify-between p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100">
+                <div className="flex flex-col gap-1">
+                   <div className="text-[10px] font-black uppercase tracking-widest text-primary">Status: Validated</div>
+                   <div className="text-[9px] font-bold text-slate-400 uppercase">Architecture Node Synthesis Complete</div>
+                </div>
+                <button className="px-10 py-4 bg-slate-900 text-white font-black text-xs uppercase rounded-2xl shadow-xl hover:scale-105 transition-transform">Download Asset</button>
+              </div>
             </div>
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center text-center max-w-md">
             <span className="material-symbols-outlined text-[120px] text-slate-200 mb-6">dynamic_feed</span>
-            <p className="text-2xl font-black uppercase italic tracking-tighter text-slate-300">Ready for Synthesis</p>
+            <p className="text-2xl font-black uppercase italic tracking-tighter text-slate-300">Ready for Logic Mapping</p>
             <button onClick={handleTrySample} className="mt-8 w-full py-4 bg-primary/10 text-primary border-2 border-primary/20 hover:bg-primary hover:text-white rounded-2xl text-[10px] font-black uppercase transition-all">
-               Load Sample {brandIdentity?.name || 'Brand'} Flow
+               Load Sample {brandIdentity?.name || 'Brand'} Workflow
             </button>
           </div>
         )}
@@ -202,7 +241,8 @@ const DataEngine: React.FC<Props> = ({ brandIdentity, initialData, onDataChange 
         {loading && (
           <div className="absolute inset-0 bg-white/60 dark:bg-black/60 backdrop-blur-md z-50 flex flex-col items-center justify-center">
              <div className="size-16 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
-             <p className="text-xs font-black uppercase tracking-widest text-primary animate-pulse">Calculating Logic Layout...</p>
+             <p className="text-sm font-black uppercase tracking-widest text-primary animate-pulse">Calculating Logic Layout...</p>
+             <p className="text-[10px] text-slate-400 mt-2 uppercase font-bold">Synchronizing with {brandIdentity?.name} guidelines</p>
           </div>
         )}
       </div>

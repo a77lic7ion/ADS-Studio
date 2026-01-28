@@ -12,7 +12,20 @@ interface Props {
 }
 
 const PromoEngine: React.FC<Props> = ({ brandIdentity, initialData, onDataChange }) => {
-  const commonCTAs = ['Explore Now', 'Shop Now', 'Learn More', 'Sign Up', 'Join Now', 'Get Started', 'Download Now', 'Book Now', 'Message Us on WhatsApp', 'Custom...'];
+  const commonCTAs = [
+    'Explore Now', 
+    'Shop Now', 
+    'Learn More', 
+    'Sign Up', 
+    'Join Now', 
+    'Get Started', 
+    'Download Now', 
+    'Book Now', 
+    'Message Us on WhatsApp', 
+    'Custom...'
+  ];
+
+  const defaultFeatures = ['Premium Support', 'Global Delivery', 'Verified Quality'];
 
   const [config, setConfig] = useState({
     companyUrl: initialData?.companyUrl || '',
@@ -24,7 +37,7 @@ const PromoEngine: React.FC<Props> = ({ brandIdentity, initialData, onDataChange
     headline: initialData?.headline || (brandIdentity ? brandIdentity.name.toUpperCase() : 'NEXT GEN INNOVATION'),
     body: initialData?.body || (brandIdentity ? `Experience premium solutions in ${brandIdentity.industry}. Visit us at ${brandIdentity.address}.` : 'Experience the future of digital product design.'),
     cta: initialData?.cta || 'Explore Now',
-    features: initialData?.features || ['Premium Support', 'Global Delivery', 'Verified Quality']
+    features: initialData?.features || defaultFeatures
   });
   
   const [loading, setLoading] = useState(false);
@@ -35,9 +48,13 @@ const PromoEngine: React.FC<Props> = ({ brandIdentity, initialData, onDataChange
 
   useEffect(() => {
     if (initialData) {
-      setConfig(initialData);
-      setBgImage(initialData.bgImage);
-      setRefImageBase64(initialData.refImageBase64);
+      setConfig({
+        ...config,
+        ...initialData,
+        features: initialData.features || defaultFeatures
+      });
+      if (initialData.bgImage) setBgImage(initialData.bgImage);
+      if (initialData.refImageBase64) setRefImageBase64(initialData.refImageBase64);
     }
   }, [initialData]);
 
@@ -52,14 +69,44 @@ const PromoEngine: React.FC<Props> = ({ brandIdentity, initialData, onDataChange
     { name: 'Business Card', ratio: '3:4' as AspectRatio }
   ];
 
+  const aestheticStyles = [
+    'Neo-Brutalism', 'Glassmorphism', 'Minimalist Luxury', 'Retro-Future', 
+    'Bauhaus Geometric', 'Y2K Glitch', 'Swiss International', 'Hyper-Realistic',
+    'Streetwear Aesthetic', 'Eco-Tech', 'Cyberpunk Noir', 'Acid Graphic', 'Modernist Swiss', '90s Retrowave'
+  ];
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const base64 = event.target?.result?.toString().split(',')[1];
+        if (base64) setRefImageBase64(base64);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRefineHeadline = async () => {
+    if (!config.headline) return;
+    setRefining(true);
+    try {
+      const refined = await gemini.refineText(config.headline, `advertising headline for ${config.topic}`);
+      setConfig(prev => ({ ...prev, headline: refined }));
+    } finally {
+      setRefining(false);
+    }
+  };
+
   const handleGenerate = async () => {
     setLoading(true);
     try {
-      const prompt = `Premium advertising visual for ${config.topic}. Visual elements: ${config.style}. Clean composition for marketing flyer.`;
+      const prompt = `Premium advertising background for ${config.topic}. Visual style: ${config.style}. Clean composition for high-end marketing.`;
       const refImg = refImageBase64 ? { data: refImageBase64, mimeType: 'image/png' } : undefined;
       const img = await gemini.generateVisualAsset(prompt, config.aspectRatio, config.style, brandIdentity, refImg);
       if (img) setBgImage(img);
     } catch (err) {
+      console.error(err);
       alert("Synthesis failed.");
     } finally {
       setLoading(false);
@@ -73,39 +120,88 @@ const PromoEngine: React.FC<Props> = ({ brandIdentity, initialData, onDataChange
       const base64Data = bgImage.split(',')[1];
       folder?.file("campaign_flyer.png", base64Data, {base64: true});
     }
-    const cardContent = `Business: ${brandIdentity?.name}\nHeadline: ${config.headline}\nCTA: ${config.cta}`;
+    const cardContent = `
+BRAND IDENTITY PACK
+-------------------
+Business: ${brandIdentity?.name}
+Industry: ${brandIdentity?.industry}
+Colors: ${brandIdentity?.colors}
+Address: ${brandIdentity?.address}
+Contact: ${brandIdentity?.contact}
+
+CAMPAIGN CONTENT
+----------------
+Headline: ${config.headline}
+Body: ${config.body}
+CTA: ${config.cta}
+Features: ${config.features.join(', ')}
+`;
     folder?.file("brand_manifesto.txt", cardContent);
     const content = await zip.generateAsync({type: "blob"});
     FileSaver.saveAs(content, `${brandIdentity?.name || 'ADS'}_Brand_Pack.zip`);
   };
 
+  const updateFeature = (index: number, value: string) => {
+    const newFeatures = [...config.features];
+    newFeatures[index] = value;
+    setConfig({ ...config, features: newFeatures });
+  };
+
   return (
     <div className="flex-1 flex flex-col lg:flex-row overflow-hidden bg-slate-50 dark:bg-[#0a0c16]">
       <section className="w-full lg:w-[420px] border-r border-slate-200 dark:border-border-dark bg-white dark:bg-background-dark overflow-y-auto p-6 flex flex-col gap-6">
-        <h3 className="text-xl font-black flex items-center gap-2">
-          <span className="material-symbols-outlined text-primary text-3xl">campaign</span>
-          Ad Suite
-        </h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-xl font-black flex items-center gap-2">
+            <span className="material-symbols-outlined text-primary text-3xl">campaign</span>
+            Ad Suite
+          </h3>
+          {loading && <div className="size-5 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>}
+        </div>
 
+        <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10">
+          <h4 className="text-[10px] font-black uppercase text-primary mb-1">Global Branding</h4>
+          <p className="text-xs font-bold truncate">{brandIdentity?.name || 'Manual Mode'}</p>
+        </div>
+        
         <div className="space-y-6">
           <div className="space-y-4">
             <div className="flex flex-col gap-2">
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Headline</label>
-              <input 
-                className="w-full rounded-xl h-11 bg-slate-50 dark:bg-[#1a1e35] border-slate-200 dark:border-slate-700 px-4 text-sm font-bold uppercase tracking-tighter" 
-                value={config.headline} 
-                onChange={e => setConfig({...config, headline: e.target.value})} 
-              />
+              <div className="relative">
+                <input 
+                  className="w-full rounded-xl h-11 bg-slate-50 dark:bg-[#1a1e35] border-slate-200 dark:border-slate-700 px-4 pr-12 text-sm font-bold uppercase tracking-tighter" 
+                  value={config.headline} 
+                  onChange={e => setConfig({...config, headline: e.target.value})} 
+                />
+                <button onClick={handleRefineHeadline} disabled={refining} className="absolute right-2 top-1.5 size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center hover:bg-primary hover:text-white transition-all">
+                  <span className={`material-symbols-outlined text-sm ${refining ? 'animate-spin' : ''}`}>auto_awesome</span>
+                </button>
+              </div>
             </div>
 
             <div className="flex flex-col gap-2">
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Body Message</label>
               <textarea 
                 className="w-full rounded-xl bg-slate-50 dark:bg-[#1a1e35] border-slate-200 dark:border-slate-700 p-4 text-sm resize-none leading-relaxed" 
-                rows={3} 
+                rows={2} 
                 value={config.body} 
                 onChange={e => setConfig({...config, body: e.target.value})} 
               />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Core Features</label>
+              <div className="space-y-2">
+                {config.features.map((feature, i) => (
+                  <input 
+                    key={i}
+                    className="w-full rounded-xl h-10 bg-slate-50 dark:bg-[#1a1e35] border-slate-200 dark:border-slate-700 px-4 text-xs" 
+                    value={feature}
+                    onChange={e => updateFeature(i, e.target.value)}
+                    placeholder={`Feature ${i + 1}`}
+                  />
+                ))}
+              </div>
             </div>
 
             <div className="flex flex-col gap-2">
@@ -137,7 +233,7 @@ const PromoEngine: React.FC<Props> = ({ brandIdentity, initialData, onDataChange
                   <button 
                     key={p.name}
                     onClick={() => setConfig({...config, platform: p.name, aspectRatio: p.ratio})}
-                    className={`px-3 py-2 rounded-xl text-[10px] font-bold border transition-all ${config.platform === p.name ? 'bg-primary border-primary text-white shadow-lg' : 'border-slate-200 dark:border-slate-700 text-slate-500'}`}
+                    className={`px-3 py-2 rounded-xl text-[10px] font-bold border transition-all ${config.platform === p.name ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20' : 'border-slate-200 dark:border-slate-700 text-slate-500'}`}
                   >
                     {p.name}
                   </button>
@@ -146,17 +242,20 @@ const PromoEngine: React.FC<Props> = ({ brandIdentity, initialData, onDataChange
           </div>
 
           <div className="flex flex-col gap-3 pt-4">
-            <button onClick={handleGenerate} disabled={loading} className="w-full h-14 bg-primary text-white font-black uppercase tracking-widest rounded-2xl shadow-xl disabled:opacity-50">
+            <button onClick={handleGenerate} disabled={loading} className="w-full h-14 bg-primary text-white font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-primary/30 disabled:opacity-50 transition-all hover:-translate-y-1 active:scale-[0.98]">
               {loading ? 'Synthesizing...' : 'Synthesize Campaign'}
             </button>
-            <button onClick={exportZipPack} className="w-full h-14 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black uppercase tracking-widest rounded-2xl">
-              Export Design Pack
+            <button onClick={exportZipPack} className="w-full h-14 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black uppercase tracking-widest rounded-2xl transition-all hover:bg-slate-800 dark:hover:bg-slate-100 flex items-center justify-center gap-2">
+              <span className="material-symbols-outlined">auto_fix_high</span>
+              Export Brand Pack
             </button>
           </div>
         </div>
       </section>
 
       <section className="flex-1 bg-slate-100 dark:bg-[#060810] flex flex-col items-center justify-center p-8 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:30px_30px] opacity-10"></div>
+        
         <div className={`
           bg-white shadow-[0_60px_120px_rgba(0,0,0,0.4)] rounded-[2.5rem] overflow-hidden relative border-[1px] border-white/20 transition-all duration-700 transform-gpu
           ${config.aspectRatio === '16:9' ? 'w-full max-w-[900px] aspect-video' : 
@@ -177,7 +276,7 @@ const PromoEngine: React.FC<Props> = ({ brandIdentity, initialData, onDataChange
               <h4 className="text-4xl lg:text-6xl font-black leading-none uppercase tracking-tighter drop-shadow-2xl">{config.headline}</h4>
               <p className="text-sm lg:text-lg opacity-90 font-medium max-w-lg leading-relaxed">{config.body}</p>
               <div className="flex flex-col gap-2">
-                {config.features.map((f: string, i: number) => (
+                {(config.features || []).map((f: string, i: number) => (
                   <div key={i} className="flex items-center gap-2 text-[10px] lg:text-xs font-bold uppercase tracking-widest">
                     <span className="material-symbols-outlined text-sm text-primary filled">check_circle</span>
                     {f}
