@@ -1,5 +1,4 @@
-
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { gemini } from '../services/geminiService';
 import { BlueprintNode, BrandIdentity } from '../types';
 
@@ -10,25 +9,36 @@ interface Props {
 }
 
 const DataEngine: React.FC<Props> = ({ brandIdentity, initialData, onDataChange }) => {
-  const [sourceType, setSourceType] = useState<'url' | 'file' | 'text'>(initialData?.sourceType || 'text');
-  const [inputValue, setInputValue] = useState(initialData?.inputValue || '');
-  const [designStyle, setDesignStyle] = useState(initialData?.designStyle || 'Process Flow');
-  const [blueprint, setBlueprint] = useState<{ nodes: BlueprintNode[] } | null>(initialData?.blueprint || null);
+  const [sourceType, setSourceType] = useState<'url' | 'file' | 'text'>('text');
+  const [inputValue, setInputValue] = useState('');
+  const [designStyle, setDesignStyle] = useState('Process Flow');
+  const [blueprint, setBlueprint] = useState<{ nodes: BlueprintNode[] } | null>(null);
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Track if we are initializing from props to avoid sync loops
+  const isInitializing = useRef(false);
 
   useEffect(() => {
     if (initialData) {
+      isInitializing.current = true;
       setSourceType(initialData.sourceType || 'text');
       setInputValue(initialData.inputValue || '');
       setDesignStyle(initialData.designStyle || 'Process Flow');
       setBlueprint(initialData.blueprint || null);
+      // Brief delay to allow state to settle before re-enabling sync
+      setTimeout(() => { isInitializing.current = false; }, 100);
     }
   }, [initialData]);
 
-  useEffect(() => {
+  const syncData = useCallback(() => {
+    if (isInitializing.current) return;
     onDataChange?.({ sourceType, inputValue, designStyle, blueprint });
-  }, [sourceType, inputValue, designStyle, blueprint]);
+  }, [sourceType, inputValue, designStyle, blueprint, onDataChange]);
+
+  useEffect(() => {
+    syncData();
+  }, [syncData]);
 
   const generateBlueprint = async (customValue?: string) => {
     const val = customValue || inputValue;
@@ -37,13 +47,15 @@ const DataEngine: React.FC<Props> = ({ brandIdentity, initialData, onDataChange 
     try {
       const data = await gemini.generateBlueprintFromData(val, designStyle, brandIdentity);
       if (data) setBlueprint(data);
+    } catch (err) {
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
   const handleTrySample = () => {
-    const sample = `${brandIdentity?.name || 'ResumeBoost'} AI Workflow: 1. Input: PDF/DOCX or Images. 2. Processing: Gemini 2.5 Flash and ATS Checkpoints. 3. Output: Modern and Minimal templates. 4. Download optimized PDF.`;
+    const sample = `${brandIdentity?.name || 'ResumeBoost'} AI: 1. Input: PDF/DOCX or Images. 2. Processing: Gemini 2.5 Flash and ATS Checkpoints. 3. Output: Modern and Minimal templates. 4. Download optimized PDF.`;
     setInputValue(sample);
     generateBlueprint(sample);
   };
@@ -59,33 +71,31 @@ const DataEngine: React.FC<Props> = ({ brandIdentity, initialData, onDataChange 
 
       const paths: React.ReactNode[] = [];
       
-      inputs.forEach(input => {
+      inputs.forEach((input, idx) => {
         engines.forEach(eng => {
            paths.push(
              <path 
-                key={`${input.id}-${eng.id}`} 
-                d={`M ${input.x} ${input.y + 50} L ${eng.x} ${eng.y - 70}`} 
+                key={`in-${input.id}-${eng.id}-${idx}`} 
+                d={`M ${input.x} ${input.y + 60} C ${input.x} ${input.y + 150}, ${eng.x} ${eng.y - 150}, ${eng.x} ${eng.y - 100}`} 
                 stroke="#E2E8F0" 
                 strokeWidth="2" 
-                strokeDasharray="8,4" 
+                strokeDasharray="10,5" 
                 fill="none" 
-                className="animate-pulse"
              />
            );
         });
       });
 
       engines.forEach(eng => {
-        outputs.forEach(out => {
+        outputs.forEach((out, idx) => {
           paths.push(
             <path 
-                key={`${eng.id}-${out.id}`} 
-                d={`M ${eng.x} ${eng.y + 70} L ${out.x} ${out.y - 80}`} 
+                key={`out-${eng.id}-${out.id}-${idx}`} 
+                d={`M ${eng.x} ${eng.y + 100} C ${eng.x} ${eng.y + 200}, ${out.x} ${out.y - 200}, ${out.x} ${out.y - 70}`} 
                 stroke="#E2E8F0" 
                 strokeWidth="2" 
-                strokeDasharray="8,4" 
+                strokeDasharray="10,5" 
                 fill="none" 
-                className="animate-pulse"
             />
           );
         });
@@ -104,31 +114,44 @@ const DataEngine: React.FC<Props> = ({ brandIdentity, initialData, onDataChange 
     if (designStyle === 'Process Flow') {
       const isEngine = node.y >= 300 && node.y < 600;
       const isOutput = node.y >= 600;
+      const isInput = node.y < 300;
+
+      if (isEngine) {
+        return (
+          <g key={node.id} transform={`translate(${node.x}, ${node.y})`}>
+             <defs>
+                <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur stdDeviation="15" result="blur" />
+                  <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                </filter>
+             </defs>
+             <circle r="90" fill={node.color} opacity="0.1" filter="url(#glow)" />
+             <circle r="70" fill="white" stroke={node.color} strokeWidth="4" />
+             <text textAnchor="middle" y="15" className="material-symbols-outlined text-5xl" fill={node.color}>auto_awesome</text>
+             <text textAnchor="middle" y="110" fill="#1E293B" className="text-sm font-black uppercase tracking-[0.2em]">{node.title}</text>
+             {node.points && node.points.map((p: string, i: number) => (
+                <text key={i} textAnchor="middle" y={130 + (i * 15)} fill="#64748B" className="text-[10px] font-bold uppercase">{p}</text>
+             ))}
+          </g>
+        );
+      }
+
       return (
         <g key={node.id} transform={`translate(${node.x}, ${node.y})`}>
-          {isEngine ? (
-            <g>
-              <defs>
-                <radialGradient id="engineGrad" cx="50%" cy="50%" r="50%">
-                   <stop offset="0%" stopColor={node.color} stopOpacity="0.2" />
-                   <stop offset="100%" stopColor={node.color} stopOpacity="0.0" />
-                </radialGradient>
-              </defs>
-              <circle r="85" fill="url(#engineGrad)" className="animate-pulse" />
-              <circle r="60" fill="white" stroke={node.color} strokeWidth="3" shadow-xl="true" />
-              <text textAnchor="middle" y="5" className="material-symbols-outlined text-4xl" fill={node.color}>settings_input_component</text>
-              <text textAnchor="middle" y="90" fill="#1E293B" className="text-[14px] font-black uppercase tracking-widest">{node.title}</text>
-            </g>
-          ) : (
-            <g>
-              <rect x="-55" y="-55" width="110" height="110" rx="20" fill="white" stroke="#E2E8F0" strokeWidth="2" className="shadow-lg" />
-              <text textAnchor="middle" y="5" className="material-symbols-outlined text-3xl" fill={isOutput ? '#10B981' : '#3B82F6'}>{node.icon || 'description'}</text>
-              <text textAnchor="middle" y="75" fill="#475569" className="text-[10px] font-black uppercase tracking-widest">{node.title}</text>
-              {node.points && node.points.length > 0 && (
-                <text textAnchor="middle" y="90" fill="#94A3B8" className="text-[8px] font-medium">{node.points[0]}</text>
-              )}
-            </g>
-          )}
+          <rect x="-65" y="-60" width="130" height="120" rx="25" fill="white" stroke="#F1F5F9" strokeWidth="2" />
+          {/* Use foreignObject to wrap HTML elements inside SVG and fix TypeScript error regarding xmlns attribute on div */}
+          <foreignObject x="-65" y="-60" width="130" height="120">
+             <div className="flex flex-col items-center justify-center h-full w-full text-center p-2">
+                <span className="material-symbols-outlined text-2xl mb-1" style={{ color: isInput ? '#3B82F6' : '#10B981' }}>{node.icon || 'description'}</span>
+                <span className="text-[9px] font-black uppercase text-slate-800 leading-tight">{node.title}</span>
+                {node.points && node.points[0] && (
+                  <span className="text-[7px] font-bold text-slate-400 uppercase mt-1">({node.points[0]})</span>
+                )}
+             </div>
+          </foreignObject>
+          {/* Overlay text for SVG compatibility */}
+          <text textAnchor="middle" y="-5" className="material-symbols-outlined text-3xl" fill={isInput ? '#3B82F6' : '#10B981'}>{node.icon || 'description'}</text>
+          <text textAnchor="middle" y="30" fill="#1E293B" className="text-[10px] font-black uppercase tracking-widest">{node.title}</text>
         </g>
       );
     }
@@ -136,7 +159,7 @@ const DataEngine: React.FC<Props> = ({ brandIdentity, initialData, onDataChange 
     return (
       <g key={node.id} transform={`translate(${node.x}, ${node.y})`}>
         <circle r="75" fill={node.color} opacity="0.1" />
-        <rect x="-95" y="-35" width="190" height="70" rx="35" fill={node.color} className="shadow-2xl" />
+        <rect x="-95" y="-35" width="190" height="70" rx="35" fill={node.color} />
         <text textAnchor="middle" y="5" fill="#fff" className="text-[12px] font-black uppercase tracking-widest pointer-events-none">{node.title}</text>
         <foreignObject x="-100" y="50" width="200" height="150">
           <div className="bg-white/95 dark:bg-[#1a1e35]/95 backdrop-blur-md p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl">
@@ -159,21 +182,16 @@ const DataEngine: React.FC<Props> = ({ brandIdentity, initialData, onDataChange 
       <div className="w-full lg:w-[420px] border-r border-slate-200 dark:border-[#222949] bg-white dark:bg-background-dark p-6 overflow-y-auto z-10 flex flex-col gap-6">
         <h2 className="text-xl font-black flex items-center gap-2">
           <span className="material-symbols-outlined text-primary text-3xl">hub</span>
-          Infographic Engine
+          Blueprint Suite
         </h2>
-
-        <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10">
-          <h4 className="text-[10px] font-black uppercase text-primary mb-1">Brand Mapping</h4>
-          <p className="text-xs font-bold truncate">{brandIdentity?.name || 'Generic Session'}</p>
-        </div>
 
         <div className="space-y-4">
           <div className="flex flex-col gap-3">
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Process Flow Description</label>
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Process Description</label>
             <textarea
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              placeholder="Describe your AI flow, business steps, or infrastructure..."
+              placeholder="Describe your process logic..."
               className="w-full rounded-xl p-4 bg-slate-50 dark:bg-[#1a1e35] border-slate-200 dark:border-slate-700 min-h-[140px] text-sm focus:ring-2 focus:ring-primary/20"
             />
           </div>
@@ -194,7 +212,7 @@ const DataEngine: React.FC<Props> = ({ brandIdentity, initialData, onDataChange 
           </div>
 
           <button onClick={() => generateBlueprint()} disabled={loading || !inputValue} className="w-full h-14 rounded-2xl bg-primary text-white font-black shadow-xl shadow-primary/30 disabled:opacity-50 transition-all hover:-translate-y-1 active:scale-[0.98]">
-            {loading ? 'Synthesizing Infographic...' : 'Generate Blueprint'}
+            {loading ? 'Synthesizing Infographic...' : 'Generate Architecture'}
           </button>
         </div>
       </div>
@@ -203,14 +221,13 @@ const DataEngine: React.FC<Props> = ({ brandIdentity, initialData, onDataChange 
         <div className="absolute inset-0 opacity-[0.05] bg-[radial-gradient(#0d33f2_1px,transparent_0)] [background-size:40px_40px]"></div>
         
         {blueprint ? (
-          <div className="relative w-full max-w-[900px] aspect-[1/1.3] bg-white rounded-[3.5rem] shadow-[0_50px_100px_rgba(0,0,0,0.15)] overflow-hidden p-16 border border-white">
-             <div className="text-center mb-16">
-                <div className="flex items-center justify-center gap-3 mb-2">
-                  <div className="h-1 w-12 bg-primary/20 rounded-full"></div>
-                  <h1 className="text-4xl font-black uppercase tracking-tighter italic text-slate-900">{brandIdentity?.name || 'PROCESS ANALYSIS'}</h1>
-                  <div className="h-1 w-12 bg-primary/20 rounded-full"></div>
+          <div className="relative w-full max-w-[950px] aspect-[1/1.3] bg-white rounded-[3.5rem] shadow-[0_50px_100px_rgba(0,0,0,0.1)] overflow-hidden p-20 border border-white">
+             <div className="text-center mb-20">
+                <div className="inline-block px-4 py-1.5 rounded-full border border-primary/20 bg-primary/5 text-[9px] font-black text-primary uppercase tracking-[0.3em] mb-4">
+                  Visual Logic Report
                 </div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] mt-2">Architecture Schema & Data Orchestration</p>
+                <h1 className="text-4xl lg:text-5xl font-black uppercase tracking-tighter italic text-slate-900 leading-none">{brandIdentity?.name || 'ARCHITECTURE OVERVIEW'}</h1>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.5em] mt-4">Powered by ADS Studio Synthesis Engine</p>
              </div>
             
             <svg viewBox="0 0 1000 1000" className="blueprint-canvas w-full h-[70%]">
@@ -218,31 +235,36 @@ const DataEngine: React.FC<Props> = ({ brandIdentity, initialData, onDataChange 
               {blueprint.nodes.map(node => renderNode(node))}
             </svg>
 
-            <div className="absolute bottom-16 left-0 right-0 px-16">
-              <div className="flex items-center justify-between p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100">
-                <div className="flex flex-col gap-1">
-                   <div className="text-[10px] font-black uppercase tracking-widest text-primary">Status: Validated</div>
-                   <div className="text-[9px] font-bold text-slate-400 uppercase">Architecture Node Synthesis Complete</div>
+            <div className="absolute bottom-16 left-0 right-0 px-20">
+              <div className="flex items-center justify-between p-10 bg-slate-50 rounded-[3rem] border border-slate-100">
+                <div className="flex items-center gap-4">
+                   <div className="size-12 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                      <span className="material-symbols-outlined">verified</span>
+                   </div>
+                   <div className="flex flex-col">
+                      <div className="text-[11px] font-black uppercase tracking-widest text-slate-900">Blueprint Active</div>
+                      <div className="text-[9px] font-bold text-slate-400 uppercase">Synchronized with Global Brand Guide</div>
+                   </div>
                 </div>
-                <button className="px-10 py-4 bg-slate-900 text-white font-black text-xs uppercase rounded-2xl shadow-xl hover:scale-105 transition-transform">Download Asset</button>
+                <button className="px-12 py-5 bg-slate-900 text-white font-black text-xs uppercase rounded-2xl shadow-2xl hover:bg-primary transition-all active:scale-95">Download PDF Report</button>
               </div>
             </div>
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center text-center max-w-md">
             <span className="material-symbols-outlined text-[120px] text-slate-200 mb-6">dynamic_feed</span>
-            <p className="text-2xl font-black uppercase italic tracking-tighter text-slate-300">Ready for Logic Mapping</p>
-            <button onClick={handleTrySample} className="mt-8 w-full py-4 bg-primary/10 text-primary border-2 border-primary/20 hover:bg-primary hover:text-white rounded-2xl text-[10px] font-black uppercase transition-all">
-               Load Sample {brandIdentity?.name || 'Brand'} Workflow
+            <p className="text-2xl font-black uppercase italic tracking-tighter text-slate-300 leading-tight">Architecture Engine<br/>Ready for Mapping</p>
+            <button onClick={handleTrySample} className="mt-10 w-full py-5 bg-primary/10 text-primary border-2 border-primary/20 hover:bg-primary hover:text-white rounded-3xl text-[10px] font-black uppercase tracking-widest transition-all">
+               Load {brandIdentity?.name || 'Brand'} Sample Flow
             </button>
           </div>
         )}
 
         {loading && (
-          <div className="absolute inset-0 bg-white/60 dark:bg-black/60 backdrop-blur-md z-50 flex flex-col items-center justify-center">
-             <div className="size-16 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
-             <p className="text-sm font-black uppercase tracking-widest text-primary animate-pulse">Calculating Logic Layout...</p>
-             <p className="text-[10px] text-slate-400 mt-2 uppercase font-bold">Synchronizing with {brandIdentity?.name} guidelines</p>
+          <div className="absolute inset-0 bg-white/60 dark:bg-black/60 backdrop-blur-xl z-50 flex flex-col items-center justify-center">
+             <div className="size-20 border-4 border-primary border-t-transparent rounded-full animate-spin mb-6 shadow-2xl"></div>
+             <p className="text-sm font-black uppercase tracking-[0.2em] text-primary animate-pulse">Calculating Logic Layout...</p>
+             <p className="text-[10px] text-slate-400 mt-2 uppercase font-bold tracking-widest">Optimizing {brandIdentity?.name} Data Schema</p>
           </div>
         )}
       </div>

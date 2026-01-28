@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { gemini } from '../services/geminiService';
 import { LogoStyle, BrandIdentity } from '../types';
 
@@ -10,22 +10,27 @@ interface Props {
 }
 
 const MarkEngine: React.FC<Props> = ({ brandIdentity, initialData, onDataChange }) => {
-  const [description, setDescription] = useState(initialData?.description || (brandIdentity ? `High-end logo for ${brandIdentity.name}, specializing in ${brandIdentity.industry}.` : ''));
-  const [industry, setIndustry] = useState(initialData?.industry || brandIdentity?.industry || '');
-  const [activeStyle, setActiveStyle] = useState(initialData?.activeStyle || 'minimalist');
+  const [description, setDescription] = useState('');
+  const [industry, setIndustry] = useState('');
+  const [activeStyle, setActiveStyle] = useState('minimalist');
   const [loading, setLoading] = useState(false);
-  const [resultImage, setResultImage] = useState<string | null>(initialData?.resultImage || null);
+  const [resultImage, setResultImage] = useState<string | null>(null);
+
+  const isInitializing = useRef(false);
 
   useEffect(() => {
     if (initialData) {
-      setDescription(initialData.description);
-      setIndustry(initialData.industry);
-      setActiveStyle(initialData.activeStyle);
-      setResultImage(initialData.resultImage);
+      isInitializing.current = true;
+      setDescription(initialData.description || (brandIdentity ? `High-end logo for ${brandIdentity.name}, specializing in ${brandIdentity.industry}.` : ''));
+      setIndustry(initialData.industry || brandIdentity?.industry || '');
+      setActiveStyle(initialData.activeStyle || 'minimalist');
+      setResultImage(initialData.resultImage || null);
+      setTimeout(() => { isInitializing.current = false; }, 100);
     }
-  }, [initialData]);
+  }, [initialData, brandIdentity]);
 
-  useEffect(() => {
+  const syncData = useCallback(() => {
+    if (isInitializing.current) return;
     onDataChange?.({ description, industry, activeStyle, resultImage });
     if (resultImage) {
       const assets = JSON.parse(localStorage.getItem('ads_studio_assets') || '[]');
@@ -34,7 +39,11 @@ const MarkEngine: React.FC<Props> = ({ brandIdentity, initialData, onDataChange 
         localStorage.setItem('ads_studio_assets', JSON.stringify(assets.slice(0, 20)));
       }
     }
-  }, [description, industry, activeStyle, resultImage]);
+  }, [description, industry, activeStyle, resultImage, onDataChange]);
+
+  useEffect(() => {
+    syncData();
+  }, [syncData]);
 
   const styles: LogoStyle[] = [
     { id: 'minimalist', name: 'Minimalist', icon: 'grid_view', description: 'Clean lines and lots of white space' },
@@ -70,13 +79,12 @@ const MarkEngine: React.FC<Props> = ({ brandIdentity, initialData, onDataChange 
         <div className="p-6 space-y-6">
           <h2 className="text-xl font-black mb-2 flex items-center gap-2">
             <span className="material-symbols-outlined text-primary text-3xl">token</span>
-            Mark Engine
+            Mark Studio
           </h2>
           
           <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10">
-            <h4 className="text-[10px] font-black uppercase text-primary mb-1">Brand Context</h4>
+            <h4 className="text-[10px] font-black uppercase text-primary mb-1">Brand Guide</h4>
             <p className="text-xs font-bold truncate">{brandIdentity?.name || 'Manual Session'}</p>
-            <p className="text-[9px] text-slate-500 font-medium truncate">{brandIdentity?.industry}</p>
           </div>
 
           <div className="flex flex-col gap-2">
@@ -122,14 +130,11 @@ const MarkEngine: React.FC<Props> = ({ brandIdentity, initialData, onDataChange 
 
       <div className="flex-1 bg-white dark:bg-[#060810] p-6 lg:p-12 overflow-y-auto flex flex-col items-center justify-center relative">
         {loading && (
-          <div className="absolute inset-0 bg-white/60 dark:bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
-            <div className="flex flex-col items-center gap-4">
-              <div className="size-20 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-              <p className="text-sm font-black uppercase italic tracking-widest text-primary animate-pulse text-center">
-                Processing Brand Geometries...<br/>
-                <span className="text-[10px] opacity-60">Synchronizing brand palette: {brandIdentity?.colors}</span>
-              </p>
-            </div>
+          <div className="absolute inset-0 bg-white/60 dark:bg-black/60 backdrop-blur-xl z-50 flex flex-col items-center justify-center">
+            <div className="size-20 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
+            <p className="text-sm font-black uppercase tracking-[0.2em] text-primary animate-pulse text-center">
+              Processing Brand Geometries...
+            </p>
           </div>
         )}
 
@@ -144,7 +149,7 @@ const MarkEngine: React.FC<Props> = ({ brandIdentity, initialData, onDataChange 
                 ) : (
                   <div className="size-64 lg:size-80 bg-white dark:bg-slate-900 rounded-[40px] flex flex-col items-center justify-center text-slate-200 dark:text-slate-800 border-2 border-dashed border-slate-200 dark:border-slate-800">
                     <span className="material-symbols-outlined text-[100px] mb-4">fingerprint</span>
-                    <p className="text-[10px] font-black uppercase tracking-[0.3em]">Awaiting Identity Synthesis</p>
+                    <p className="text-[10px] font-black uppercase tracking-[0.3em]">Awaiting Synthesis</p>
                   </div>
                 )}
               </div>
@@ -153,17 +158,16 @@ const MarkEngine: React.FC<Props> = ({ brandIdentity, initialData, onDataChange 
 
           <div className="flex flex-col justify-center space-y-8">
             <div className="space-y-2">
-              <h3 className="text-4xl font-black uppercase tracking-tighter leading-none dark:text-white">
+              <h3 className="text-4xl font-black uppercase tracking-tighter leading-none dark:text-white italic">
                 {brandIdentity?.name || 'BRAND PREVIEW'}
               </h3>
               <p className="text-sm font-medium text-slate-500 uppercase tracking-widest">{activeStyle} IDENTITY SYSTEM</p>
             </div>
             
             <div className="grid grid-cols-2 gap-4">
-               {['Main Mark', 'Monochrome', 'Glyph', 'Brand Pack'].map((label, i) => (
+               {['Main Mark', 'Glyph Pack', 'Monochrome', 'Export Assets'].map((label, i) => (
                   <div key={i} className="bg-slate-50 dark:bg-slate-900/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 relative overflow-hidden group/item cursor-pointer">
-                    {loading && <div className="absolute inset-0 shimmer opacity-50"></div>}
-                    <div className="h-24 bg-white dark:bg-slate-800 rounded-xl mb-3 flex items-center justify-center">
+                    <div className="h-20 bg-white dark:bg-slate-800 rounded-xl mb-3 flex items-center justify-center">
                       <span className="material-symbols-outlined text-slate-200 dark:text-slate-700 text-3xl group-hover/item:scale-110 transition-transform">style</span>
                     </div>
                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{label}</span>
@@ -174,10 +178,10 @@ const MarkEngine: React.FC<Props> = ({ brandIdentity, initialData, onDataChange 
             {resultImage && (
               <button 
                 onClick={handleDownload}
-                className="w-full py-4 rounded-xl border-2 border-slate-900 dark:border-white text-slate-900 dark:text-white font-black uppercase text-sm hover:bg-slate-900 dark:hover:bg-white hover:text-white dark:hover:text-black transition-all flex items-center justify-center gap-2"
+                className="w-full py-5 rounded-2xl bg-slate-900 text-white font-black uppercase text-xs hover:bg-primary transition-all flex items-center justify-center gap-3 shadow-2xl"
               >
-                <span className="material-symbols-outlined">download</span>
-                Download High-Res Mark
+                <span className="material-symbols-outlined text-sm">download</span>
+                Download Design Package
               </button>
             )}
           </div>

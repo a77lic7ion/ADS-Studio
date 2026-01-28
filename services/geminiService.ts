@@ -51,8 +51,6 @@ export class GeminiService {
       - Middle section: THE ENGINE (id: engine_core)
       - Bottom section: OUTPUT (id: output_1, output_2...)
       
-      Otherwise, use a standard layout.
-      
       Return a JSON object with:
       nodes: array of { id, title, color (HEX), x (0-1000), y (0-1000), points (array of sub-details), icon (Material Symbols name) }.
       Ensure nodes are logically connected.
@@ -90,7 +88,10 @@ export class GeminiService {
       });
       
       const text = response.text;
-      return text ? JSON.parse(text) : null;
+      if (!text) return null;
+      // Safety check for common markdown wrapping
+      const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      return JSON.parse(cleanJson);
     } catch (error) {
       console.error("Blueprint generation failed", error);
       return null;
