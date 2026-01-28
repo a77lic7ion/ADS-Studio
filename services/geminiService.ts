@@ -42,12 +42,24 @@ export class GeminiService {
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const brandContext = brand ? `The company is ${brand.name} in the ${brand.industry} space.` : '';
-      const prompt = `Act as a senior product architect. ${brandContext} Analyze the following data/context: "${source}".
-      Design a comprehensive Blueprint Mind Map in the "${designStyle}" style.
+      
+      const prompt = `Act as a senior information designer. ${brandContext} Analyze this data: "${source}".
+      Design a professional Infographic Blueprint in the "${designStyle}" style.
+      
+      If the style is "Process Flow", organize nodes vertically: 
+      - Top section: INPUT (id: input_1, input_2...)
+      - Middle section: THE ENGINE (id: engine_core)
+      - Bottom section: OUTPUT (id: output_1, output_2...)
+      
+      Otherwise, use a standard layout.
+      
       Return a JSON object with:
-      nodes: array of { id, title, color (HEX), x (0-1000), y (0-1000), points (array of sub-details) }.
-      Ensure nodes are well-spaced and logically connected to a central "Core" node.
-      Vary the X and Y coordinates significantly between 100 and 900 to avoid overlapping.`;
+      nodes: array of { id, title, color (HEX), x (0-1000), y (0-1000), points (array of sub-details), icon (Material Symbols name) }.
+      Ensure nodes are logically connected.
+      X/Y should be strictly:
+      - INPUTS: Y=150, X spaced out.
+      - ENGINE: Y=450, X=500.
+      - OUTPUTS: Y=750, X spaced out.`;
 
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
@@ -65,6 +77,7 @@ export class GeminiService {
                     id: { type: Type.STRING },
                     title: { type: Type.STRING },
                     color: { type: Type.STRING },
+                    icon: { type: Type.STRING },
                     x: { type: Type.NUMBER },
                     y: { type: Type.NUMBER },
                     points: { type: Type.ARRAY, items: { type: Type.STRING } }
@@ -96,10 +109,10 @@ export class GeminiService {
   ): Promise<string | undefined> {
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const brandInfo = brand ? `For ${brand.name} (${brand.industry}). Brand colors to incorporate: ${brand.colors}.` : '';
+      const brandInfo = brand ? `For ${brand.name} (${brand.industry}). Brand colors: ${brand.colors}.` : '';
       
       const parts: any[] = [
-        { text: `High-quality advertising background for: ${prompt}. ${brandInfo} Style: ${style}. Professional commercial photography, cinematic lighting, copy space included. High-end aesthetic.` }
+        { text: `High-quality commercial advertising background for: ${prompt}. ${brandInfo} Style: ${style}. Clean composition, copy space for text, premium studio lighting. No text in image.` }
       ];
 
       if (referenceImage) {
@@ -109,7 +122,7 @@ export class GeminiService {
             mimeType: referenceImage.mimeType
           }
         });
-        parts[0].text = `Create an advertising visual inspired by the style and brand elements of the attached image. Subject: ${prompt}. ${brandInfo} Aesthetic Style: ${style}. Ensure a professional commercial look suitable for ${aspectRatio} aspect ratio.`;
+        parts[0].text = `Commercial visual inspired by the style of the attached image. Subject: ${prompt}. ${brandInfo} Aesthetic: ${style}. Professional look for ${aspectRatio} format.`;
       }
 
       const response = await ai.models.generateContent({
