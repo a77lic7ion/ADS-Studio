@@ -17,6 +17,7 @@ export interface BrandIdentity {
   contact: string;
   colors: string;
   products: string[];
+  logo?: string; // Base64 or URL of the generated logo
 }
 
 export interface Project {
@@ -36,6 +37,8 @@ export interface BlueprintNode {
   x: number;
   y: number;
   points: string[];
+  icon?: string;
+  tier?: 'input' | 'engine' | 'output';
 }
 
 export interface LogoStyle {

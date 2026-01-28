@@ -4,40 +4,53 @@ import { AspectRatio, BrandIdentity } from "../types";
 
 export class GeminiService {
   /**
-   * Generates a logo concept using brand identity
+   * Generates a complete logo system with 4 variations
    */
-  async generateLogo(description: string, industry: string, style: string, brand?: BrandIdentity | null): Promise<string | undefined> {
+  async generateLogoSystem(description: string, industry: string, style: string, brand?: BrandIdentity | null): Promise<string[]> {
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const brandContext = brand ? `Brand Name: ${brand.name}. Colors: ${brand.colors}. Industry: ${brand.industry}.` : '';
-      const prompt = `Create a professional logo for: ${description}. ${brandContext} Style: ${style}. 
-      High-end vector mark, centered, clean background, minimal details, premium brand identity. Ensure colors align with ${brand?.colors || 'the provided description'}.`;
+      
+      const prompts = [
+        `Primary Logo: ${description}. ${brandContext} Style: ${style}. Professional vector mark, high-end centered composition.`,
+        `Minimal Glyph: Simplified icon-only version of the ${description} logo. High contrast, bold geometric shapes.`,
+        `Monochrome: Black and white version of the ${description} logo. Professional stencil/stamp look.`,
+        `Alternative Composition: Modern layout variation of the ${description} logo. Dynamic spacing, premium aesthetic.`
+      ];
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image',
-        contents: { parts: [{ text: prompt }] },
-        config: { imageConfig: { aspectRatio: "1:1" } }
-      });
+      const results: string[] = [];
 
-      if (response.candidates) {
-        for (const candidate of response.candidates) {
-          for (const part of candidate.content.parts) {
+      // We call them in parallel for speed
+      const promises = prompts.map(async (p) => {
+        const response = await ai.models.generateContent({
+          model: 'gemini-2.5-flash-image',
+          contents: { parts: [{ text: `${p} High-end brand identity, clean background, no realistic photos, pure vector-style graphic.` }] },
+          config: { imageConfig: { aspectRatio: "1:1" } }
+        });
+
+        if (response.candidates?.[0]?.content?.parts) {
+          for (const part of response.candidates[0].content.parts) {
             if (part.inlineData) {
               return `data:image/png;base64,${part.inlineData.data}`;
             }
           }
         }
-      }
-      return undefined;
+        return null;
+      });
+
+      const images = await Promise.all(promises);
+      return images.filter((img): img is string => img !== null);
     } catch (error) {
-      console.error("Logo generation failed", error);
+      console.error("Logo system generation failed", error);
       throw error;
     }
   }
 
-  /**
-   * Generates a structured blueprint from provided text or context
-   */
+  async generateLogo(description: string, industry: string, style: string, brand?: BrandIdentity | null): Promise<string | undefined> {
+    const systems = await this.generateLogoSystem(description, industry, style, brand);
+    return systems[0];
+  }
+
   async generateBlueprintFromData(source: string, designStyle: string, brand?: BrandIdentity | null) {
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -89,7 +102,6 @@ export class GeminiService {
       
       const text = response.text;
       if (!text) return null;
-      // Safety check for common markdown wrapping
       const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
       return JSON.parse(cleanJson);
     } catch (error) {
@@ -98,9 +110,6 @@ export class GeminiService {
     }
   }
 
-  /**
-   * Generates a high-quality visual asset for flyers/ads
-   */
   async generateVisualAsset(
     prompt: string, 
     aspectRatio: AspectRatio = "16:9", 

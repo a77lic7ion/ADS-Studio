@@ -33,7 +33,7 @@ const PromoEngine: React.FC<Props> = ({ brandIdentity, initialData, onDataChange
     platform: 'Instagram Post',
     resolution: '1080p' as Resolution,
     aspectRatio: '1:1' as AspectRatio,
-    style: 'Neo-Brutalism',
+    style: 'Minimalist Luxury',
     headline: brandIdentity ? brandIdentity.name.toUpperCase() : 'NEXT GEN INNOVATION',
     body: brandIdentity ? `Experience premium solutions in ${brandIdentity.industry}. Visit us at ${brandIdentity.address}.` : 'Experience the future of digital product design.',
     cta: 'Explore Now',
@@ -44,6 +44,7 @@ const PromoEngine: React.FC<Props> = ({ brandIdentity, initialData, onDataChange
   const [refining, setRefining] = useState(false);
   const [bgImage, setBgImage] = useState('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2000&auto=format&fit=crop');
   const [refImageBase64, setRefImageBase64] = useState<string | null>(null);
+  const [showCustomCTA, setShowCustomCTA] = useState(false);
   
   const isInitializing = useRef(false);
 
@@ -57,6 +58,11 @@ const PromoEngine: React.FC<Props> = ({ brandIdentity, initialData, onDataChange
       });
       if (initialData.bgImage) setBgImage(initialData.bgImage);
       if (initialData.refImageBase64) setRefImageBase64(initialData.refImageBase64);
+      
+      // Determine if initial CTA is custom
+      const isCustom = !commonCTAs.includes(initialData.cta) && initialData.cta !== 'Custom...';
+      setShowCustomCTA(isCustom);
+
       setTimeout(() => { isInitializing.current = false; }, 100);
     }
   }, [initialData]);
@@ -84,7 +90,7 @@ const PromoEngine: React.FC<Props> = ({ brandIdentity, initialData, onDataChange
   const handleGenerate = async () => {
     setLoading(true);
     try {
-      const prompt = `Premium advertising background for ${config.topic}. Visual style: ${config.style}. Clean composition for high-end marketing.`;
+      const prompt = `Premium advertising background for ${config.topic}. Visual style: ${config.style}. Clean composition for high-end marketing. Colors should match ${brandIdentity?.colors || 'modern blue and white'}.`;
       const refImg = refImageBase64 ? { data: refImageBase64, mimeType: 'image/png' } : undefined;
       const img = await gemini.generateVisualAsset(prompt, config.aspectRatio, config.style, brandIdentity, refImg);
       if (img) setBgImage(img);
@@ -112,6 +118,16 @@ const PromoEngine: React.FC<Props> = ({ brandIdentity, initialData, onDataChange
     const newFeatures = [...config.features];
     newFeatures[index] = value;
     setConfig({ ...config, features: newFeatures });
+  };
+
+  const handleCTAChange = (val: string) => {
+    if (val === 'Custom...') {
+      setShowCustomCTA(true);
+      setConfig({...config, cta: ''});
+    } else {
+      setShowCustomCTA(false);
+      setConfig({...config, cta: val});
+    }
   };
 
   return (
@@ -168,19 +184,24 @@ const PromoEngine: React.FC<Props> = ({ brandIdentity, initialData, onDataChange
             </div>
 
             <div className="flex flex-col gap-2">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">CTA Action</label>
-              <select 
-                className="w-full rounded-xl h-11 bg-slate-50 dark:bg-[#1a1e35] border-slate-200 dark:border-slate-700 px-3 text-sm font-bold mb-2"
-                onChange={(e) => { if (e.target.value !== 'Custom...') setConfig({...config, cta: e.target.value}); }}
-                value={commonCTAs.includes(config.cta) ? config.cta : 'Custom...'}
-              >
-                {commonCTAs.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-              <input 
-                className="w-full rounded-xl h-11 bg-slate-50 dark:bg-[#1a1e35] border-slate-200 dark:border-slate-700 px-4 text-sm font-bold"
-                value={config.cta}
-                onChange={(e) => setConfig({...config, cta: e.target.value})}
-              />
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Call to Action</label>
+              <div className="space-y-2">
+                <select 
+                  className="w-full rounded-xl h-11 bg-slate-50 dark:bg-[#1a1e35] border-slate-200 dark:border-slate-700 px-3 text-sm font-bold"
+                  onChange={(e) => handleCTAChange(e.target.value)}
+                  value={showCustomCTA ? 'Custom...' : config.cta}
+                >
+                  {commonCTAs.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+                {showCustomCTA && (
+                  <input 
+                    className="w-full rounded-xl h-11 bg-slate-50 dark:bg-[#1a1e35] border-slate-200 dark:border-slate-700 px-4 text-sm font-bold animate-in slide-in-from-top-2"
+                    value={config.cta}
+                    placeholder="Enter custom CTA..."
+                    onChange={(e) => setConfig({...config, cta: e.target.value})}
+                  />
+                )}
+              </div>
             </div>
           </div>
 
@@ -211,8 +232,15 @@ const PromoEngine: React.FC<Props> = ({ brandIdentity, initialData, onDataChange
           
           <div className="relative h-full flex flex-col p-10 lg:p-16 text-white">
             <div className="flex justify-between items-start mb-auto">
-               <div className="text-sm font-black uppercase tracking-[0.4em] opacity-80">{brandIdentity?.name || 'ADS STUDIO'}</div>
-               <div className="material-symbols-outlined opacity-30 text-4xl">blur_on</div>
+               <div className="flex flex-col">
+                  <div className="text-sm font-black uppercase tracking-[0.4em] opacity-80">{brandIdentity?.name || 'ADS STUDIO'}</div>
+                  <div className="text-[10px] font-bold opacity-40 uppercase tracking-widest">{brandIdentity?.industry}</div>
+               </div>
+               {brandIdentity?.logo ? (
+                 <img src={brandIdentity.logo} alt="Logo" className="h-14 w-14 object-contain rounded-xl shadow-lg border border-white/20" />
+               ) : (
+                 <div className="material-symbols-outlined opacity-30 text-4xl">blur_on</div>
+               )}
             </div>
 
             <div className="space-y-6 mb-12">
@@ -229,13 +257,14 @@ const PromoEngine: React.FC<Props> = ({ brandIdentity, initialData, onDataChange
             </div>
 
             <div className="flex flex-col lg:flex-row items-center gap-10">
-              <button className="w-full lg:w-auto px-12 py-6 bg-white text-black font-black text-xs uppercase rounded-full shadow-2xl hover:scale-105 transition-transform flex items-center justify-center gap-3">
+              <button className="w-full lg:w-auto px-12 py-6 bg-white text-black font-black text-xs uppercase rounded-full shadow-2xl hover:scale-105 transition-transform flex items-center justify-center gap-3 group">
                 {config.cta.toLowerCase().includes('whatsapp') && <span className="material-symbols-outlined text-lg">chat</span>}
                 {config.cta}
+                <span className="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
               </button>
               <div className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40 text-center lg:text-left">
-                Start your project today!<br/>
-                {brandIdentity?.contact}
+                {config.companyUrl || brandIdentity?.contact || 'Start your project today!'}<br/>
+                {brandIdentity?.address}
               </div>
             </div>
           </div>

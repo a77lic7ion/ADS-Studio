@@ -28,6 +28,14 @@ const App: React.FC = () => {
     setActiveTab(ModuleType.LOGOS);
   };
 
+  const handleLogoGenerated = (logo: string) => {
+    if (brandIdentity) {
+      const updated = { ...brandIdentity, logo };
+      setBrandIdentity(updated);
+      localStorage.setItem('ads_studio_brand', JSON.stringify(updated));
+    }
+  };
+
   const handleProjectSelect = (project: Project) => {
     setActiveTab(project.type);
     setCurrentProjectData(project.data);
@@ -52,7 +60,14 @@ const App: React.FC = () => {
 
     switch (activeTab) {
       case ModuleType.LOGOS:
-        return <MarkEngine brandIdentity={brandIdentity} initialData={currentProjectData} onDataChange={handleDataChange} />;
+        return (
+          <MarkEngine 
+            brandIdentity={brandIdentity} 
+            initialData={currentProjectData} 
+            onDataChange={handleDataChange} 
+            onLogoGenerated={handleLogoGenerated}
+          />
+        );
       case ModuleType.INFOGRAPHICS:
         return <DataEngine brandIdentity={brandIdentity} initialData={currentProjectData} onDataChange={handleDataChange} />;
       case ModuleType.FLYERS:
@@ -60,7 +75,14 @@ const App: React.FC = () => {
       case ModuleType.SETTINGS:
         return <Settings onResetBrand={resetBrand} />;
       default:
-        return <MarkEngine brandIdentity={brandIdentity} initialData={currentProjectData} onDataChange={handleDataChange} />;
+        return (
+          <MarkEngine 
+            brandIdentity={brandIdentity} 
+            initialData={currentProjectData} 
+            onDataChange={handleDataChange} 
+            onLogoGenerated={handleLogoGenerated}
+          />
+        );
     }
   };
 
