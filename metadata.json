@@ -1,0 +1,8 @@
+{
+  "name": "ADS Studio - Unified Design Suite",
+  "description": "A comprehensive marketing UI tool featuring a Logo Generator (Mark Engine), Infographic Generator (Data Engine), and Flyer Generator (Promo Engine), all powered by Gemini AI.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
