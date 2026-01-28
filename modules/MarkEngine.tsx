@@ -1,32 +1,32 @@
 
 import React, { useState, useEffect } from 'react';
 import { gemini } from '../services/geminiService';
-import { LogoStyle } from '../types';
+import { LogoStyle, BrandIdentity } from '../types';
 
 interface Props {
+  brandIdentity: BrandIdentity | null;
   initialData?: any;
   onDataChange?: (data: any) => void;
 }
 
-const MarkEngine: React.FC<Props> = ({ initialData, onDataChange }) => {
-  const [description, setDescription] = useState(initialData?.description || '');
-  const [industry, setIndustry] = useState(initialData?.industry || '');
+const MarkEngine: React.FC<Props> = ({ brandIdentity, initialData, onDataChange }) => {
+  const [description, setDescription] = useState(initialData?.description || (brandIdentity ? `High-end logo for ${brandIdentity.name}, specializing in ${brandIdentity.industry}.` : ''));
+  const [industry, setIndustry] = useState(initialData?.industry || brandIdentity?.industry || '');
   const [activeStyle, setActiveStyle] = useState(initialData?.activeStyle || 'minimalist');
   const [loading, setLoading] = useState(false);
   const [resultImage, setResultImage] = useState<string | null>(initialData?.resultImage || null);
 
   useEffect(() => {
     if (initialData) {
-      setDescription(initialData.description || '');
-      setIndustry(initialData.industry || '');
-      setActiveStyle(initialData.activeStyle || 'minimalist');
-      setResultImage(initialData.resultImage || null);
+      setDescription(initialData.description);
+      setIndustry(initialData.industry);
+      setActiveStyle(initialData.activeStyle);
+      setResultImage(initialData.resultImage);
     }
   }, [initialData]);
 
   useEffect(() => {
     onDataChange?.({ description, industry, activeStyle, resultImage });
-    // Global asset tracking
     if (resultImage) {
       const assets = JSON.parse(localStorage.getItem('ads_studio_assets') || '[]');
       if (!assets.find((a: any) => a.data === resultImage)) {
@@ -47,7 +47,7 @@ const MarkEngine: React.FC<Props> = ({ initialData, onDataChange }) => {
     if (!description || !industry) return;
     setLoading(true);
     try {
-      const img = await gemini.generateLogo(description, industry, activeStyle);
+      const img = await gemini.generateLogo(description, industry, activeStyle, brandIdentity);
       if (img) setResultImage(img);
     } catch (err) {
       alert("Failed to generate logo. Please try again.");
@@ -73,6 +73,12 @@ const MarkEngine: React.FC<Props> = ({ initialData, onDataChange }) => {
             Mark Engine
           </h2>
           
+          <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10">
+            <h4 className="text-[10px] font-black uppercase text-primary mb-1">Brand Context</h4>
+            <p className="text-xs font-bold truncate">{brandIdentity?.name || 'Manual Session'}</p>
+            <p className="text-[9px] text-slate-500 font-medium truncate">{brandIdentity?.industry}</p>
+          </div>
+
           <div className="flex flex-col gap-2">
             <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Brand Vision</label>
             <textarea
@@ -80,23 +86,8 @@ const MarkEngine: React.FC<Props> = ({ initialData, onDataChange }) => {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="w-full resize-none rounded-xl text-slate-900 dark:text-white border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-[#181d34] min-h-[120px] p-4 text-sm"
-              placeholder="e.g. A cutting-edge AI research firm with a focus on human-centric design..."
+              placeholder="Describe the logo vision..."
             />
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Industry</label>
-            <select 
-              value={industry}
-              onChange={(e) => setIndustry(e.target.value)}
-              className="w-full h-11 rounded-xl text-slate-900 dark:text-white border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-[#181d34] px-4 text-sm"
-            >
-              <option value="">Select industry</option>
-              <option value="tech">Technology</option>
-              <option value="luxury">Luxury Goods</option>
-              <option value="eco">Sustainability</option>
-              <option value="finance">FinTech</option>
-            </select>
           </div>
 
           <div className="flex flex-col gap-3">
@@ -129,7 +120,19 @@ const MarkEngine: React.FC<Props> = ({ initialData, onDataChange }) => {
         </div>
       </div>
 
-      <div className="flex-1 bg-white dark:bg-[#060810] p-6 lg:p-12 overflow-y-auto flex flex-col items-center justify-center">
+      <div className="flex-1 bg-white dark:bg-[#060810] p-6 lg:p-12 overflow-y-auto flex flex-col items-center justify-center relative">
+        {loading && (
+          <div className="absolute inset-0 bg-white/60 dark:bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
+            <div className="flex flex-col items-center gap-4">
+              <div className="size-20 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+              <p className="text-sm font-black uppercase italic tracking-widest text-primary animate-pulse text-center">
+                Processing Brand Geometries...<br/>
+                <span className="text-[10px] opacity-60">Synchronizing brand palette: {brandIdentity?.colors}</span>
+              </p>
+            </div>
+          </div>
+        )}
+
         <div className="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-2 gap-12">
           <div className="relative group">
             <div className="aspect-square w-full rounded-3xl bg-slate-50 dark:bg-[#181d34] border-2 border-slate-100 dark:border-slate-800 shadow-inner flex items-center justify-center overflow-hidden relative">
@@ -140,7 +143,7 @@ const MarkEngine: React.FC<Props> = ({ initialData, onDataChange }) => {
                   <img src={resultImage} alt="Generated logo" className="size-64 lg:size-80 rounded-[40px] shadow-[0_40px_80px_rgba(0,0,0,0.3)] animate-in fade-in zoom-in duration-1000" />
                 ) : (
                   <div className="size-64 lg:size-80 bg-white dark:bg-slate-900 rounded-[40px] flex flex-col items-center justify-center text-slate-200 dark:text-slate-800 border-2 border-dashed border-slate-200 dark:border-slate-800">
-                    <span className="material-symbols-outlined text-[100px] mb-4">{loading ? 'hourglass_top' : 'fingerprint'}</span>
+                    <span className="material-symbols-outlined text-[100px] mb-4">fingerprint</span>
                     <p className="text-[10px] font-black uppercase tracking-[0.3em]">Awaiting Identity Synthesis</p>
                   </div>
                 )}
@@ -151,16 +154,17 @@ const MarkEngine: React.FC<Props> = ({ initialData, onDataChange }) => {
           <div className="flex flex-col justify-center space-y-8">
             <div className="space-y-2">
               <h3 className="text-4xl font-black uppercase tracking-tighter leading-none dark:text-white">
-                {description.split(' ').slice(0, 2).join(' ') || 'BRAND PREVIEW'}
+                {brandIdentity?.name || 'BRAND PREVIEW'}
               </h3>
               <p className="text-sm font-medium text-slate-500 uppercase tracking-widest">{activeStyle} IDENTITY SYSTEM</p>
             </div>
             
             <div className="grid grid-cols-2 gap-4">
-               {['Main Mark', 'Monochrome', 'Glyph', 'Dark Variant'].map((label, i) => (
-                  <div key={i} className="bg-slate-50 dark:bg-slate-900/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800">
+               {['Main Mark', 'Monochrome', 'Glyph', 'Brand Pack'].map((label, i) => (
+                  <div key={i} className="bg-slate-50 dark:bg-slate-900/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 relative overflow-hidden group/item cursor-pointer">
+                    {loading && <div className="absolute inset-0 shimmer opacity-50"></div>}
                     <div className="h-24 bg-white dark:bg-slate-800 rounded-xl mb-3 flex items-center justify-center">
-                      <span className="material-symbols-outlined text-slate-200 dark:text-slate-700">style</span>
+                      <span className="material-symbols-outlined text-slate-200 dark:text-slate-700 text-3xl group-hover/item:scale-110 transition-transform">style</span>
                     </div>
                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{label}</span>
                   </div>
@@ -173,7 +177,7 @@ const MarkEngine: React.FC<Props> = ({ initialData, onDataChange }) => {
                 className="w-full py-4 rounded-xl border-2 border-slate-900 dark:border-white text-slate-900 dark:text-white font-black uppercase text-sm hover:bg-slate-900 dark:hover:bg-white hover:text-white dark:hover:text-black transition-all flex items-center justify-center gap-2"
               >
                 <span className="material-symbols-outlined">download</span>
-                Export Design Package
+                Download High-Res Mark
               </button>
             )}
           </div>

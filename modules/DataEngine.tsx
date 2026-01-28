@@ -1,14 +1,15 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { gemini } from '../services/geminiService';
-import { BlueprintNode } from '../types';
+import { BlueprintNode, BrandIdentity } from '../types';
 
 interface Props {
+  brandIdentity: BrandIdentity | null;
   initialData?: any;
   onDataChange?: (data: any) => void;
 }
 
-const DataEngine: React.FC<Props> = ({ initialData, onDataChange }) => {
+const DataEngine: React.FC<Props> = ({ brandIdentity, initialData, onDataChange }) => {
   const [sourceType, setSourceType] = useState<'url' | 'file' | 'text'>(initialData?.sourceType || 'text');
   const [inputValue, setInputValue] = useState(initialData?.inputValue || '');
   const [designStyle, setDesignStyle] = useState(initialData?.designStyle || 'Organic Blueprint');
@@ -45,7 +46,7 @@ const DataEngine: React.FC<Props> = ({ initialData, onDataChange }) => {
     if (!val) return;
     setLoading(true);
     try {
-      const data = await gemini.generateBlueprintFromData(val, designStyle);
+      const data = await gemini.generateBlueprintFromData(val, designStyle, brandIdentity);
       if (data) setBlueprint(data);
     } finally {
       setLoading(false);
@@ -53,7 +54,7 @@ const DataEngine: React.FC<Props> = ({ initialData, onDataChange }) => {
   };
 
   const handleTrySample = () => {
-    const sample = "Global Logistics Supply Chain Optimization: 1. Core Hub manages inventory. 2. Suppliers send raw materials. 3. Manufacturing assembles components. 4. Warehouse handles distribution. 5. Logistics routes to Retail. 6. Customer receives product.";
+    const sample = `${brandIdentity?.name || 'Global'} Logistics Optimization: 1. Core Hub manages inventory. 2. Suppliers send raw materials. 3. Manufacturing assembles components. 4. Warehouse handles distribution. 5. Logistics routes to Retail. 6. Customer receives product.`;
     setInputValue(sample);
     generateBlueprint(sample);
   };
@@ -235,6 +236,11 @@ const DataEngine: React.FC<Props> = ({ initialData, onDataChange }) => {
           <span className="material-symbols-outlined text-primary text-3xl">hub</span>
           Blueprint Engine
         </h2>
+
+        <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10">
+          <h4 className="text-[10px] font-black uppercase text-primary mb-1">Brand Mapping</h4>
+          <p className="text-xs font-bold truncate">{brandIdentity?.name || 'Generic Session'}</p>
+        </div>
         
         <div className="space-y-4">
           <div className="flex flex-col gap-3">
@@ -330,6 +336,7 @@ const DataEngine: React.FC<Props> = ({ initialData, onDataChange }) => {
           <div className="flex flex-col items-center justify-center text-primary animate-pulse z-20">
             <span className="material-symbols-outlined text-[100px] animate-spin mb-4">refresh</span>
             <p className="text-xl font-black uppercase italic tracking-tighter">Calculating Logic...</p>
+            <p className="text-[10px] font-black opacity-60 mt-2 uppercase tracking-widest">Analyzing {brandIdentity?.name} infrastructure</p>
           </div>
         ) : blueprint ? (
           <div className="relative w-full max-w-[1000px] aspect-[1.4/1] animate-in fade-in zoom-in duration-1000 transform-gpu">
@@ -339,7 +346,7 @@ const DataEngine: React.FC<Props> = ({ initialData, onDataChange }) => {
             </svg>
             <div className="absolute top-4 left-4 flex gap-2">
                <div className="px-3 py-1 bg-primary/10 text-primary text-[8px] font-black uppercase tracking-widest border border-primary/20 rounded-full backdrop-blur-md">
-                  CORE INFOGRAPHIC
+                  {brandIdentity?.name || 'CORE'} ARCHITECTURE
                </div>
                <div className="px-3 py-1 bg-slate-900/10 dark:bg-white/10 text-slate-400 text-[8px] font-black uppercase tracking-widest border border-slate-200 dark:border-slate-800 rounded-full backdrop-blur-md">
                   STYLE: {designStyle}
@@ -357,13 +364,13 @@ const DataEngine: React.FC<Props> = ({ initialData, onDataChange }) => {
             
             <div className="p-8 bg-slate-50 dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-800 flex flex-col gap-4">
               <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Quick Start</h4>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">New to ADS Studio? Click below to instantly generate a professional supply-chain visualization sample.</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">New to ADS Studio? Click below to instantly generate a professional sample.</p>
               <button 
                 onClick={handleTrySample}
                 className="w-full py-4 bg-primary text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all transform active:scale-95 shadow-xl shadow-primary/20 flex items-center justify-center gap-2"
               >
                 <span className="material-symbols-outlined text-sm">rocket_launch</span>
-                Load Sample Architecture
+                Load {brandIdentity?.name || 'Brand'} Architecture
               </button>
             </div>
           </div>

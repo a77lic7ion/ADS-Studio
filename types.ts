@@ -1,5 +1,6 @@
 
 export enum ModuleType {
+  LANDING = 'Landing',
   LOGOS = 'Logos',
   INFOGRAPHICS = 'Infographics',
   FLYERS = 'Flyers',
@@ -8,6 +9,15 @@ export enum ModuleType {
 
 export type AspectRatio = '1:1' | '16:9' | '9:16' | '4:3' | '3:4';
 export type Resolution = '720p' | '1080p' | '4K';
+
+export interface BrandIdentity {
+  name: string;
+  industry: string;
+  address: string;
+  contact: string;
+  colors: string;
+  products: string[];
+}
 
 export interface Project {
   id: string;
@@ -28,7 +38,6 @@ export interface BlueprintNode {
   points: string[];
 }
 
-// Added LogoStyle interface to resolve import error in MarkEngine.tsx
 export interface LogoStyle {
   id: string;
   name: string;

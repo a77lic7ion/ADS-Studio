@@ -1,16 +1,17 @@
 
 import { GoogleGenAI, GenerateContentResponse, Type } from "@google/genai";
-import { AspectRatio } from "../types";
+import { AspectRatio, BrandIdentity } from "../types";
 
 export class GeminiService {
   /**
-   * Generates a logo concept
+   * Generates a logo concept using brand identity
    */
-  async generateLogo(description: string, industry: string, style: string): Promise<string | undefined> {
+  async generateLogo(description: string, industry: string, style: string, brand?: BrandIdentity | null): Promise<string | undefined> {
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const prompt = `Create a professional logo for: ${description}. Industry: ${industry}. Style: ${style}. 
-      High-end vector mark, centered, clean background, minimal details, premium brand identity.`;
+      const brandContext = brand ? `Brand Name: ${brand.name}. Colors: ${brand.colors}. Industry: ${brand.industry}.` : '';
+      const prompt = `Create a professional logo for: ${description}. ${brandContext} Style: ${style}. 
+      High-end vector mark, centered, clean background, minimal details, premium brand identity. Ensure colors align with ${brand?.colors || 'the provided description'}.`;
 
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
@@ -37,10 +38,11 @@ export class GeminiService {
   /**
    * Generates a structured blueprint from provided text or context
    */
-  async generateBlueprintFromData(source: string, designStyle: string) {
+  async generateBlueprintFromData(source: string, designStyle: string, brand?: BrandIdentity | null) {
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const prompt = `Act as a senior product architect. Analyze the following data/context: "${source}".
+      const brandContext = brand ? `The company is ${brand.name} in the ${brand.industry} space.` : '';
+      const prompt = `Act as a senior product architect. ${brandContext} Analyze the following data/context: "${source}".
       Design a comprehensive Blueprint Mind Map in the "${designStyle}" style.
       Return a JSON object with:
       nodes: array of { id, title, color (HEX), x (0-1000), y (0-1000), points (array of sub-details) }.
@@ -89,13 +91,15 @@ export class GeminiService {
     prompt: string, 
     aspectRatio: AspectRatio = "16:9", 
     style: string = "Modern", 
+    brand?: BrandIdentity | null,
     referenceImage?: { data: string, mimeType: string }
   ): Promise<string | undefined> {
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const brandInfo = brand ? `For ${brand.name} (${brand.industry}). Brand colors to incorporate: ${brand.colors}.` : '';
       
       const parts: any[] = [
-        { text: `High-quality advertising background for: ${prompt}. Style: ${style}. Professional commercial photography, cinematic lighting, copy space included. High-end aesthetic.` }
+        { text: `High-quality advertising background for: ${prompt}. ${brandInfo} Style: ${style}. Professional commercial photography, cinematic lighting, copy space included. High-end aesthetic.` }
       ];
 
       if (referenceImage) {
@@ -105,7 +109,7 @@ export class GeminiService {
             mimeType: referenceImage.mimeType
           }
         });
-        parts[0].text = `Create an advertising visual inspired by the style and brand elements of the attached image. Subject: ${prompt}. Aesthetic Style: ${style}. Ensure a professional commercial look suitable for ${aspectRatio} aspect ratio.`;
+        parts[0].text = `Create an advertising visual inspired by the style and brand elements of the attached image. Subject: ${prompt}. ${brandInfo} Aesthetic Style: ${style}. Ensure a professional commercial look suitable for ${aspectRatio} aspect ratio.`;
       }
 
       const response = await ai.models.generateContent({
